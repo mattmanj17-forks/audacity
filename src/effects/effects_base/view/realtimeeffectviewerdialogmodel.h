@@ -20,6 +20,7 @@ class RealtimeEffectViewerDialogModel : public QObject, public muse::Injectable,
 {
     Q_OBJECT
     Q_PROPERTY(QString effectState READ prop_effectState WRITE prop_setEffectState FINAL)
+    Q_PROPERTY(QString title READ prop_title NOTIFY titleChanged);
     Q_PROPERTY(QString trackName READ prop_trackName NOTIFY trackNameChanged);
     Q_PROPERTY(bool isActive READ prop_isActive WRITE prop_setIsActive NOTIFY isActiveChanged);
     Q_PROPERTY(bool isMasterEffect READ prop_isMasterEffect NOTIFY isMasterEffectChanged);
@@ -31,6 +32,7 @@ class RealtimeEffectViewerDialogModel : public QObject, public muse::Injectable,
 
 public:
     Q_INVOKABLE void load();
+    Q_INVOKABLE bool isVst3() const;
 
     RealtimeEffectViewerDialogModel(QObject* parent = nullptr);
     ~RealtimeEffectViewerDialogModel() override;
@@ -38,6 +40,7 @@ public:
     QString prop_effectState() const;
     void prop_setEffectState(const QString& effectState);
     QString prop_trackName() const;
+    QString prop_title() const;
 
     bool prop_isActive() const;
     void prop_setIsActive(bool isActive);
@@ -46,6 +49,7 @@ public:
 
 signals:
     void trackNameChanged();
+    void titleChanged();
     void isActiveChanged();
     void isMasterEffectChanged();
 
@@ -54,5 +58,6 @@ private:
     void unregisterState();
 
     RealtimeEffectStatePtr m_effectState;
+    bool m_isVst3 = false;
 };
 }

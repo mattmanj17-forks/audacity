@@ -47,6 +47,8 @@ Rectangle {
 
     property bool multiSampleEdit: false
 
+    property bool asymmetricStereoHeightsPossible: false
+
     signal clipStartEditRequested()
     signal clipEndEditRequested()
 
@@ -100,6 +102,12 @@ Rectangle {
         root.clipHeaderHoveredChanged(headerHovered)
     }
 
+    onAsymmetricStereoHeightsPossibleChanged: {
+        if (!asymmetricStereoHeightsPossible) {
+            root.ratioChanged(showChannelSplitter ? 0.5 : 1)
+        }
+    }
+
     function editTitle() {
         editLoader.edit(titleLabel.text)
     }
@@ -142,6 +150,10 @@ Rectangle {
     ClipContextMenuModel {
         id: singleClipContextMenuModel
         clipKey: root.clipKey
+
+        onClipTitleEditRequested: {
+            root.editTitle()
+        }
     }
 
     ContextMenuLoader {
@@ -467,6 +479,7 @@ Rectangle {
                     onFocusChanged: {
                         if (!titleEdit.focus) {
                             titleEdit.visible = false
+                            titleEdit.accepted()
                         }
                     }
                 }
@@ -579,7 +592,8 @@ Rectangle {
 
                 anchors.fill: parent
 
-                editable: root.enableCursorInteraction
+                editable: root.enableCursorInteraction && root.asymmetricStereoHeightsPossible
+                asymmetricStereoHeightsPossible: root.asymmetricStereoHeightsPossible
 
                 color: "#000000"
                 opacity: 0.10
