@@ -1,3 +1,2 @@
-module Muse.Vst
-VstViewerDialog 1.0 VstViewerDialog.qml
+module Audacity.Vst
 VstViewer 1.0 VstViewer.qml

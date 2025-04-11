@@ -79,8 +79,8 @@ public:
     Q_ENUM(Type)
 };
 
-enum class SnapType {
-    Bar,
+enum class SnapType : unsigned int {
+    Bar = 0,
 
     Half,
     Quarter,
@@ -104,6 +104,12 @@ enum class SnapType {
     CDDAFrames
 };
 
+struct Snap {
+    SnapType type = SnapType::Bar;
+    bool enabled = false;
+    bool isSnapTriplets = false;
+};
+
 enum class TimelineRulerMode {
     MINUTES_AND_SECONDS = 0,
     BEATS_AND_MEASURES
@@ -123,6 +129,18 @@ public:
 enum class Direction {
     Left = 0,
     Right
+};
+
+class StereoHeightsPref
+{
+    Q_GADGET
+public:
+    enum class AsymmetricStereoHeights {
+        ALWAYS = 0,
+        WORKSPACE_DEPENDENT,
+        NEVER
+    };
+    Q_ENUM(AsymmetricStereoHeights)
 };
 
 constexpr const char16_t* COLOR_CHANGE_ACTION = u"action://trackedit/clip/change-color?color=%1";

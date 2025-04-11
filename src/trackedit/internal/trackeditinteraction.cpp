@@ -101,11 +101,6 @@ bool TrackeditInteraction::copyClipIntoClipboard(const trackedit::ClipKey& clipK
     return m_interaction->copyClipIntoClipboard(clipKey);
 }
 
-bool TrackeditInteraction::copyClipDataIntoClipboard(const trackedit::ClipKey& clipKey, secs_t begin, secs_t end)
-{
-    return m_interaction->copyClipDataIntoClipboard(clipKey, begin, end);
-}
-
 bool TrackeditInteraction::copyNonContinuousTrackDataIntoClipboard(const TrackId trackId, const ClipKeyList& clipKeys, secs_t offset)
 {
     return m_interaction->copyNonContinuousTrackDataIntoClipboard(trackId, clipKeys, offset);
@@ -152,6 +147,16 @@ bool TrackeditInteraction::splitClipsAtSilences(const ClipKeyList& clipKeyList)
 bool TrackeditInteraction::splitRangeSelectionAtSilences(const TrackIdList& tracksIds, secs_t begin, secs_t end)
 {
     return withPlaybackStop(&ITrackeditInteraction::splitRangeSelectionAtSilences, tracksIds, begin, end);
+}
+
+bool TrackeditInteraction::splitRangeSelectionIntoNewTracks(const TrackIdList& tracksIds, secs_t begin, secs_t end)
+{
+    return withPlaybackStop(&ITrackeditInteraction::splitRangeSelectionIntoNewTracks, tracksIds, begin, end);
+}
+
+bool TrackeditInteraction::splitClipsIntoNewTracks(const ClipKeyList& clipKeyList)
+{
+    return withPlaybackStop(&ITrackeditInteraction::splitClipsIntoNewTracks, clipKeyList);
 }
 
 bool TrackeditInteraction::mergeSelectedOnTracks(const TrackIdList& tracksIds, secs_t begin, secs_t end)

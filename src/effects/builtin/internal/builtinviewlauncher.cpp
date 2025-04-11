@@ -12,22 +12,15 @@
 
 using namespace au::effects;
 
-static const char16_t* BUILTIN_VIEWER_URI = u"audacity://effects/builtin_viewer?type=%1&instanceId=%2";
-
-muse::Ret BuiltinViewLauncher::showEffect(const EffectId& effectId, const EffectInstanceId& instanceId)
+muse::Ret BuiltinViewLauncher::showEffect(const EffectInstanceId& instanceId) const
 {
-    PluginID pluginID = effectId.toStdString();
-    Effect* effect = dynamic_cast<Effect*>(EffectManager::Get().GetEffect(pluginID));
-    IF_ASSERT_FAILED(effect) {
-        LOGE() << "effect not available, effectId: " << effectId;
-        return muse::make_ret(muse::Ret::Code::InternalError);
-    }
+    muse::UriQuery uri(muse::String(EFFECT_VIEWER_URI).toStdString());
+    uri.addParam("instanceId", muse::Val(instanceId));
+    uri.addParam("isVst", muse::Val(false));
+    return interactive()->open(uri).ret;
+}
 
-    muse::String type = au3::wxToString(effect->GetSymbol().Internal());
-    muse::Ret ret = interactive()->open(muse::String(BUILTIN_VIEWER_URI)
-                                        .arg(type)
-                                        .arg(size_t(instanceId)).toStdString()
-                                        ).ret;
-
-    return ret;
+void BuiltinViewLauncher::showRealtimeEffect(const RealtimeEffectStatePtr& state) const
+{
+    doShowRealtimeEffect(state);
 }

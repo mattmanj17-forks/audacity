@@ -4,8 +4,10 @@
 #include "realtimeeffectviewerdialogmodel.h"
 #include "libraries/lib-realtime-effects/RealtimeEffectState.h"
 #include "libraries/lib-effects/EffectPlugin.h"
+#include "libraries/lib-module-manager/PluginManager.h"
 #include "trackedit/trackedittypes.h"
 #include "trackedit/itrackeditproject.h"
+#include "au3wrap/internal/wxtypes_convert.h"
 
 namespace au::effects {
 RealtimeEffectViewerDialogModel::RealtimeEffectViewerDialogModel(QObject* parent)
@@ -32,6 +34,15 @@ void RealtimeEffectViewerDialogModel::load()
             emit isActiveChanged();
         }
     });
+
+    realtimeEffectService()->effectSettingsChanged().onNotify(this, [this]{
+        emit isActiveChanged();
+    });
+}
+
+bool RealtimeEffectViewerDialogModel::isVst3() const
+{
+    return m_isVst3;
 }
 
 bool RealtimeEffectViewerDialogModel::prop_isActive() const
@@ -70,8 +81,17 @@ void RealtimeEffectViewerDialogModel::prop_setEffectState(const QString& effectS
     const auto instance = std::dynamic_pointer_cast<effects::EffectInstance>(m_effectState->GetInstance());
     instancesRegister()->regInstance(muse::String::fromStdString(effectId), instance, m_effectState->GetAccess());
 
+    const PluginDescriptor* const plug = PluginManager::Get().GetPlugin(effectId);
+    if (!plug || !PluginManager::IsPluginAvailable(*plug)) {
+        LOGE() << "plugin not available, effectId: " << effectId;
+        return;
+    }
+    const std::string family = au3::wxToStdSting(plug->GetEffectFamily());
+    m_isVst3 = family == "VST3";
+
     emit isActiveChanged();
     emit trackNameChanged();
+    emit titleChanged();
     emit isMasterEffectChanged();
 }
 
@@ -94,6 +114,12 @@ QString RealtimeEffectViewerDialogModel::prop_trackName() const
     }
 
     return QString::fromStdString(*trackName);
+}
+
+QString RealtimeEffectViewerDialogModel::prop_title() const
+{
+    const auto effectName = realtimeEffectService()->effectName(m_effectState);
+    return effectName.has_value() ? QString::fromStdString(*effectName) : QString();
 }
 
 void RealtimeEffectViewerDialogModel::subscribe()

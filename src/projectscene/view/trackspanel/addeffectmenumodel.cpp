@@ -2,6 +2,8 @@
  * Audacity: A Digital Audio Editor
  */
 #include "addeffectmenumodel.h"
+#include "effects/effects_base/effectstypes.h"
+#include "effects/effects_base/effectsutils.h"
 #include "log.h"
 
 using namespace muse;
@@ -18,25 +20,9 @@ void AddEffectMenuModel::doLoad()
 
 void AddEffectMenuModel::doPopulateMenu()
 {
-    MenuItemList items;
-
-    const auto metaList = effectsProvider()->effectMetaList();
-    const auto categoryList = effectsProvider()->effectsCategoryList();
-    std::unordered_map<String, MenuItemList> menuCategories;
-
-    for (const effects::EffectMeta& meta : metaList) {
-        if (!meta.isRealtimeCapable) {
-            continue;
-        }
-        MenuItem* item = makeMenuItem("realtimeeffect-add", TranslatableString::untranslatable(meta.title));
-        item->setArgs(actions::ActionData::make_arg1(meta.id));
-        menuCategories[meta.categoryId].push_back(item);
-    }
-
-    for (const auto& entry : menuCategories) {
-        items << makeMenu(TranslatableString::untranslatable(entry.first), entry.second);
-    }
-
+    const MenuItemList items
+        = au::effects::utils::effectMenus(effectsConfiguration()->realtimeEffectOrganization(),
+                                          effectsProvider()->effectMetaList(), m_effectFilter, *this);
     setItems(items);
 }
 
@@ -48,8 +34,19 @@ void AddEffectMenuModel::handleMenuItem(const QString& itemId)
         return;
     }
 
-    const auto effectId = menuItem.args().arg<effects::EffectId>(0);
+    const auto effectId = effects::effectIdFromAction(menuItem.id());
     if (const auto state = realtimeEffectService()->addRealtimeEffect(*tId, effectId)) {
         effectsProvider()->showEffect(state);
     }
+}
+
+muse::uicomponents::MenuItem* AddEffectMenuModel::makeMenuEffectItem(const effects::EffectId& effectId)
+{
+    return makeMenuItem(effects::makeEffectAction(effects::REALTIME_EFFECT_ADD_ACTION, effectId).toString());
+}
+
+muse::uicomponents::MenuItem* AddEffectMenuModel::makeMenuEffect(const muse::String& title,
+                                                                 const muse::uicomponents::MenuItemList& items)
+{
+    return makeMenu(muse::TranslatableString::untranslatable(title), items);
 }

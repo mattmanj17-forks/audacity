@@ -28,11 +28,14 @@ public:
     MOCK_METHOD(muse::async::Channel<ClipKeyList>, clipsSelected, (), (const, override));
     MOCK_METHOD(double, selectedClipStartTime, (), (const, override));
     MOCK_METHOD(double, selectedClipEndTime, (), (const, override));
+    MOCK_METHOD(double, leftMostSelectedClipStartTime, (), (const, override));
+    MOCK_METHOD(double, rightMostSelectedClipEndTime, (), (const, override));
 
     MOCK_METHOD(void, setSelectedTrackAudioData, (TrackId), (override));
     MOCK_METHOD(void, resetDataSelection, (), (override));
     MOCK_METHOD(bool, timeSelectionIsNotEmpty, (), (const, override));
     MOCK_METHOD(bool, isDataSelectedOnTrack, (TrackId), (const, override));
+    MOCK_METHOD(void, setSelectedAllAudioData, (), (override));
 
     MOCK_METHOD(secs_t, dataSelectedStartTime, (), (const, override));
     MOCK_METHOD(void, setDataSelectedStartTime, (secs_t, bool), (override));
