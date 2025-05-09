@@ -18,12 +18,6 @@ public:
 
     MOCK_METHOD(double, zoom, (), (const, override));
 
-    MOCK_METHOD(trackedit::secs_t, insertSilenceDuration, (), (const, override));
-    MOCK_METHOD(void, setInsertSilenceDuration, (const trackedit::secs_t duration), (override));
-
-    MOCK_METHOD(std::string, insertSilenceDurationFormat, (), (const, override));
-    MOCK_METHOD(void, setInsertSilenceDurationFormat, (const std::string& format), (override));
-
     MOCK_METHOD(int, mouseZoomPrecision, (), (const, override));
     MOCK_METHOD(void, setMouseZoomPrecision, (int precision), (override));
 
@@ -40,5 +34,13 @@ public:
     MOCK_METHOD(ClipStyles::Style, clipStyle, (), (const, override));
     MOCK_METHOD(void, setClipStyle, (ClipStyles::Style style), (override));
     MOCK_METHOD(muse::async::Channel<ClipStyles::Style>, clipStyleChanged, (), (const, override));
+
+    MOCK_METHOD(StereoHeightsPref::AsymmetricStereoHeights,  stereoHeightsPref, (), (const, override));
+    MOCK_METHOD(void, setStereoHeightsPref, (StereoHeightsPref::AsymmetricStereoHeights pref), (override));
+    MOCK_METHOD(muse::async::Notification, stereoHeightsPrefChanged, (), (const, override));
+
+    MOCK_METHOD(std::vector<std::string>, asymmetricStereoHeightsWorkspaces, (), (const, override));
+    MOCK_METHOD(void, setAsymmetricStereoHeightsWorkspaces, (std::vector<std::string>& workspaces), (override));
+    MOCK_METHOD(muse::async::Notification, asymmetricStereoHeightsWorkspacesChanged, (), (const, override));
 };
 }

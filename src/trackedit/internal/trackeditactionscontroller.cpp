@@ -16,6 +16,7 @@ static const ActionCode CUT_CODE("cut");
 static const ActionCode PASTE_CODE("paste");
 static const ActionCode DELETE_CODE("delete");
 static const ActionCode SPLIT_CODE("split");
+static const ActionCode SPLIT_INTO_NEW_TRACK_CODE("split-into-new-track");
 static const ActionCode JOIN_CODE("join");
 static const ActionCode DISJOIN_CODE("disjoin");
 static const ActionCode DUPLICATE_CODE("duplicate");
@@ -44,11 +45,14 @@ static const ActionCode CLIP_DELETE_CODE("clip-delete");
 static const ActionCode MULTI_CLIP_DELETE_CODE("multi-clip-delete");
 static const ActionCode RANGE_SELECTION_DELETE_CODE("clip-delete-selected");
 
+static const ActionCode OPEN_CLIP_AND_SPEED_CODE("clip-pitch-speed-open");
 static const ActionCode CLIP_RENDER_PITCH_AND_SPEED_CODE("clip-render-pitch-speed");
 static const ActionCode TRACK_SPLIT("track-split");
 static const ActionCode TRACK_SPLIT_AT("track-split-at");
 static const ActionCode SPLIT_CLIPS_AT_SILENCES("split-clips-at-silences");
 static const ActionCode SPLIT_RANGE_SELECTION_AT_SILENCES("split-range-selection-at-silences");
+static const ActionCode SPLIT_RANGE_SELECTION_INTO_NEW_TRACKS("split-range-selection-into-new-tracks");
+static const ActionCode SPLIT_CLIPS_INTO_NEW_TRACKS("split-clips-into-new-tracks");
 static const ActionCode MERGE_SELECTED_ON_TRACK("merge-selected-on-tracks");
 static const ActionCode DUPLICATE_RANGE_SELECTION_CODE("duplicate-selected");
 static const ActionCode DUPLICATE_CLIPS_CODE("duplicate-clips");
@@ -90,6 +94,7 @@ static const std::vector<ActionCode> actionsDisabledDuringRecording {
     DELETE_PER_TRACK_RIPPLE_CODE,
     DELETE_ALL_TRACKS_RIPPLE_CODE,
     SPLIT_CODE,
+    SPLIT_INTO_NEW_TRACK_CODE,
     JOIN_CODE,
     DUPLICATE_CODE,
     CLIP_CUT_CODE,
@@ -106,6 +111,8 @@ static const std::vector<ActionCode> actionsDisabledDuringRecording {
     TRACK_SPLIT_AT,
     SPLIT_CLIPS_AT_SILENCES,
     SPLIT_RANGE_SELECTION_AT_SILENCES,
+    SPLIT_RANGE_SELECTION_INTO_NEW_TRACKS,
+    SPLIT_CLIPS_INTO_NEW_TRACKS,
     MERGE_SELECTED_ON_TRACK,
     DUPLICATE_RANGE_SELECTION_CODE,
     DUPLICATE_CLIPS_CODE,
@@ -133,6 +140,7 @@ void TrackeditActionsController::init()
     dispatcher()->reg(this, CUT_CODE, this, &TrackeditActionsController::doGlobalCut);
     dispatcher()->reg(this, DELETE_CODE, this, &TrackeditActionsController::doGlobalDelete);
     dispatcher()->reg(this, SPLIT_CODE, this, &TrackeditActionsController::doGlobalSplit);
+    dispatcher()->reg(this, SPLIT_INTO_NEW_TRACK_CODE, this, &TrackeditActionsController::doGlobalSplitIntoNewTrack);
     dispatcher()->reg(this, JOIN_CODE, this, &TrackeditActionsController::doGlobalJoin);
     dispatcher()->reg(this, DISJOIN_CODE, this, &TrackeditActionsController::doGlobalDisjoin);
     dispatcher()->reg(this, DUPLICATE_CODE, this, &TrackeditActionsController::doGlobalDuplicate);
@@ -161,11 +169,14 @@ void TrackeditActionsController::init()
     dispatcher()->reg(this, MULTI_CLIP_DELETE_CODE, this, &TrackeditActionsController::multiClipDelete);
     dispatcher()->reg(this, RANGE_SELECTION_DELETE_CODE, this, &TrackeditActionsController::rangeSelectionDelete);
 
+    dispatcher()->reg(this, OPEN_CLIP_AND_SPEED_CODE, this, &TrackeditActionsController::openClipPitchAndSpeed);
     dispatcher()->reg(this, CLIP_RENDER_PITCH_AND_SPEED_CODE, this, &TrackeditActionsController::renderClipPitchAndSpeed);
     dispatcher()->reg(this, TRACK_SPLIT, this, &TrackeditActionsController::trackSplit);
     dispatcher()->reg(this, TRACK_SPLIT_AT, this, &TrackeditActionsController::tracksSplitAt);
     dispatcher()->reg(this, SPLIT_RANGE_SELECTION_AT_SILENCES, this, &TrackeditActionsController::splitRangeSelectionAtSilences);
     dispatcher()->reg(this, SPLIT_CLIPS_AT_SILENCES, this, &TrackeditActionsController::splitClipsAtSilences);
+    dispatcher()->reg(this, SPLIT_RANGE_SELECTION_INTO_NEW_TRACKS, this, &TrackeditActionsController::splitRangeSelectionIntoNewTracks);
+    dispatcher()->reg(this, SPLIT_CLIPS_INTO_NEW_TRACKS, this, &TrackeditActionsController::splitClipsIntoNewTracks);
     dispatcher()->reg(this, MERGE_SELECTED_ON_TRACK, this, &TrackeditActionsController::mergeSelectedOnTrack);
     dispatcher()->reg(this, UNDO, this, &TrackeditActionsController::undo);
     dispatcher()->reg(this, REDO, this, &TrackeditActionsController::redo);
@@ -350,6 +361,11 @@ void TrackeditActionsController::doGlobalDelete()
         return;
     }
 
+    if (!selectionController()->selectedTracks().empty()) {
+        dispatcher()->dispatch(TRACK_DELETE);
+        return;
+    }
+
     interactive()->error(muse::trc("trackedit", "No audio selected"),
                          muse::trc("trackedit", "Select the audio for Delete then try again."));
 }
@@ -393,9 +409,10 @@ void TrackeditActionsController::doGlobalDeleteAllTracksRipple()
 {
     auto moveClips = ActionData::make_arg1(true);
 
+    project::IAudacityProjectPtr project = globalContext()->currentProject();
+    auto tracks = project->trackeditProject()->trackIdList();
+
     if (selectionController()->timeSelectionIsNotEmpty()) {
-        project::IAudacityProjectPtr project = globalContext()->currentProject();
-        auto tracks = project->trackeditProject()->trackIdList();
         secs_t selectedStartTime = selectionController()->dataSelectedStartTime();
         secs_t selectedEndTime = selectionController()->dataSelectedEndTime();
 
@@ -406,7 +423,12 @@ void TrackeditActionsController::doGlobalDeleteAllTracksRipple()
     }
 
     if (!selectionController()->selectedClips().empty()) {
-        dispatcher()->dispatch(MULTI_CLIP_DELETE_CODE, moveClips);
+        secs_t selectedStartTime = selectionController()->leftMostSelectedClipStartTime();
+        secs_t selectedEndTime = selectionController()->rightMostSelectedClipEndTime();
+
+        trackeditInteraction()->removeTracksData(tracks, selectedStartTime, selectedEndTime, true);
+
+        selectionController()->resetDataSelection();
         return;
     }
 
@@ -430,9 +452,26 @@ void TrackeditActionsController::doGlobalSplit()
         pivots.push_back(globalContext()->playbackState()->playbackPosition());
     }
 
-    for (const auto& pivot : pivots) {
-        dispatcher()->dispatch(TRACK_SPLIT_AT, ActionData::make_arg2<TrackIdList, secs_t>(tracksIdsToSplit, pivot));
+    dispatcher()->dispatch(TRACK_SPLIT_AT, ActionData::make_arg2<TrackIdList, std::vector<secs_t> >(tracksIdsToSplit, pivots));
+}
+
+void TrackeditActionsController::doGlobalSplitIntoNewTrack()
+{
+    if (selectionController()->timeSelectionIsNotEmpty()) {
+        TrackIdList selectedTracks = selectionController()->selectedTracks();
+        secs_t selectedStartTime = selectionController()->dataSelectedStartTime();
+        secs_t selectedEndTime = selectionController()->dataSelectedEndTime();
+        dispatcher()->dispatch(SPLIT_RANGE_SELECTION_INTO_NEW_TRACKS,
+                               ActionData::make_arg3<TrackIdList, secs_t, secs_t>(selectedTracks, selectedStartTime, selectedEndTime));
+        return;
     }
+
+    ClipKeyList selectedClips = selectionController()->selectedClips();
+    if (selectedClips.empty()) {
+        return;
+    }
+
+    dispatcher()->dispatch(SPLIT_CLIPS_INTO_NEW_TRACKS, ActionData::make_arg1<ClipKeyList>(selectedClips));
 }
 
 void TrackeditActionsController::doGlobalJoin()
@@ -729,9 +768,9 @@ void TrackeditActionsController::tracksSplitAt(const ActionData& args)
         return;
     }
 
-    secs_t playbackPosition = args.arg<secs_t>(1);
+    auto pivots = args.arg<std::vector<secs_t> >(1);
 
-    trackeditInteraction()->splitTracksAt(tracksIds, playbackPosition);
+    trackeditInteraction()->splitTracksAt(tracksIds, pivots);
 }
 
 void TrackeditActionsController::splitClipsAtSilences(const ActionData& args)
@@ -765,6 +804,37 @@ void TrackeditActionsController::splitRangeSelectionAtSilences(const ActionData&
     trackeditInteraction()->splitRangeSelectionAtSilences(tracksIds, begin, end);
 }
 
+void TrackeditActionsController::splitRangeSelectionIntoNewTracks(const ActionData& args)
+{
+    IF_ASSERT_FAILED(args.count() == 3) {
+        return;
+    }
+
+    TrackIdList tracksIds = args.arg<TrackIdList>(0);
+    if (tracksIds.empty()) {
+        return;
+    }
+
+    secs_t begin = args.arg<secs_t>(1);
+    secs_t end = args.arg<secs_t>(2);
+
+    trackeditInteraction()->splitRangeSelectionIntoNewTracks(tracksIds, begin, end);
+}
+
+void TrackeditActionsController::splitClipsIntoNewTracks(const ActionData& args)
+{
+    IF_ASSERT_FAILED(args.count() == 1) {
+        return;
+    }
+
+    ClipKeyList clipKeyList = args.arg<ClipKeyList>(0);
+    if (clipKeyList.empty()) {
+        return;
+    }
+
+    trackeditInteraction()->splitClipsIntoNewTracks(clipKeyList);
+}
+
 void TrackeditActionsController::mergeSelectedOnTrack(const muse::actions::ActionData& args)
 {
     IF_ASSERT_FAILED(args.count() == 3) {
@@ -778,7 +848,6 @@ void TrackeditActionsController::mergeSelectedOnTrack(const muse::actions::Actio
 
     secs_t begin = args.arg<secs_t>(1);
     secs_t end = args.arg<secs_t>(2);
-    secs_t duration = end - begin;
 
     trackeditInteraction()->mergeSelectedOnTracks(tracksIds, begin, end);
 }
@@ -945,7 +1014,7 @@ void TrackeditActionsController::duplicateTracks(const muse::actions::ActionData
     trackeditInteraction()->duplicateTracks(trackIds);
 }
 
-void TrackeditActionsController::moveTracksUp(const muse::actions::ActionData& args)
+void TrackeditActionsController::moveTracksUp(const muse::actions::ActionData&)
 {
     TrackIdList trackIds = selectionController()->selectedTracks();
 
@@ -956,7 +1025,7 @@ void TrackeditActionsController::moveTracksUp(const muse::actions::ActionData& a
     trackeditInteraction()->moveTracks(trackIds, TrackMoveDirection::Up);
 }
 
-void TrackeditActionsController::moveTracksDown(const muse::actions::ActionData& args)
+void TrackeditActionsController::moveTracksDown(const muse::actions::ActionData&)
 {
     TrackIdList trackIds = selectionController()->selectedTracks();
 
@@ -967,7 +1036,7 @@ void TrackeditActionsController::moveTracksDown(const muse::actions::ActionData&
     trackeditInteraction()->moveTracks(trackIds, TrackMoveDirection::Down);
 }
 
-void TrackeditActionsController::moveTracksToTop(const muse::actions::ActionData& args)
+void TrackeditActionsController::moveTracksToTop(const muse::actions::ActionData&)
 {
     TrackIdList trackIds = selectionController()->selectedTracks();
 
@@ -978,7 +1047,7 @@ void TrackeditActionsController::moveTracksToTop(const muse::actions::ActionData
     trackeditInteraction()->moveTracks(trackIds, TrackMoveDirection::Top);
 }
 
-void TrackeditActionsController::moveTracksToBottom(const muse::actions::ActionData& args)
+void TrackeditActionsController::moveTracksToBottom(const muse::actions::ActionData&)
 {
     TrackIdList trackIds = selectionController()->selectedTracks();
 
@@ -1052,6 +1121,17 @@ void TrackeditActionsController::toggleStretchClipToMatchTempo(const ActionData&
     notifyActionCheckedChanged(STRETCH_ENABLED_CODE);
 }
 
+void TrackeditActionsController::openClipPitchAndSpeed()
+{
+    auto selectedClips = selectionController()->selectedClips();
+
+    if (selectedClips.empty() || selectedClips.size() > 1) {
+        return;
+    }
+
+    dispatcher()->dispatch("clip-pitch-speed", ActionData::make_arg1<trackedit::ClipKey>(selectedClips.front()));
+}
+
 void TrackeditActionsController::renderClipPitchAndSpeed(const muse::actions::ActionData& args)
 {
     IF_ASSERT_FAILED(args.count() == 1) {
@@ -1104,7 +1184,7 @@ void TrackeditActionsController::setClipColor(const muse::actions::ActionQuery& 
     notifyActionCheckedChanged(q.toString());
 }
 
-bool TrackeditActionsController::actionChecked(const ActionCode& actionCode) const
+bool TrackeditActionsController::actionChecked(const ActionCode&) const
 {
     //! TODO AU4
     return false;

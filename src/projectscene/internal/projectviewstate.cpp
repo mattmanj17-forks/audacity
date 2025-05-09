@@ -2,6 +2,8 @@
 * Audacity: A Digital Audio Editor
 */
 #include "projectviewstate.h"
+#include "au3wrap/internal/projectsnap.h"
+#include "au3wrap/au3types.h"
 
 using namespace au::projectscene;
 
@@ -9,10 +11,43 @@ constexpr int DEFAULT_HEIGHT = 116;
 constexpr int MIN_HEIGHT = 44;
 constexpr int COLLAPSE_HEIGHT = 72;
 
-ProjectViewState::ProjectViewState()
+namespace {
+void saveProjectSnap(std::shared_ptr<au::au3::IAu3Project> project, const Snap& snap)
+{
+    au::au3::Au3Project* au3Project = reinterpret_cast<au::au3::Au3Project*>(project->au3ProjectPtr());
+    IF_ASSERT_FAILED(au3Project) {
+        return;
+    }
+    auto& projectSnap = au::au3::ProjectSnap::Get(*au3Project);
+    projectSnap.setSnapType(static_cast<unsigned int>(snap.type));
+    projectSnap.enableSnap(snap.enabled);
+    projectSnap.setSnapTriplets(snap.isSnapTriplets);
+}
+
+Snap getProjectSnap(std::shared_ptr<au::au3::IAu3Project> project)
+{
+    au::au3::Au3Project* au3Project = reinterpret_cast<au::au3::Au3Project*>(project->au3ProjectPtr());
+    IF_ASSERT_FAILED(au3Project) {
+        return Snap {};
+    }
+    auto& projectSnap = au::au3::ProjectSnap::Get(*au3Project);
+    return Snap {
+        static_cast<SnapType>(projectSnap.snapType()),
+        projectSnap.isSnapEnabled(),
+        projectSnap.isSnapTriplets()
+    };
+}
+}
+
+ProjectViewState::ProjectViewState(std::shared_ptr<au::au3::IAu3Project> project)
 {
     configuration()->setIsEffectsPanelVisible(false);
     qApp->installEventFilter(this);
+
+    m_snap.set(getProjectSnap(project));
+    m_snap.ch.onReceive(this, [project = project](const Snap& s) {
+        saveProjectSnap(project, s);
+    });
 }
 
 muse::ValCh<int> ProjectViewState::tracksVericalY() const
@@ -175,7 +210,7 @@ void ProjectViewState::setClipEditStartTimeOffset(double val)
     m_clipEditStartTimeOffset = val;
 }
 
-double ProjectViewState::clipEditStartTimeOffset()
+double ProjectViewState::clipEditStartTimeOffset() const
 {
     return m_clipEditStartTimeOffset;
 }
@@ -189,9 +224,47 @@ void ProjectViewState::setClipEditEndTimeOffset(double val)
     m_clipEditEndTimeOffset = val;
 }
 
-double ProjectViewState::clipEditEndTimeOffset()
+double ProjectViewState::clipEditEndTimeOffset() const
 {
     return m_clipEditEndTimeOffset;
+}
+
+void ProjectViewState::setMoveInitiated(bool val)
+{
+    if (m_moveInitiated == val) {
+        return;
+    }
+
+    m_moveInitiated = val;
+}
+
+bool ProjectViewState::moveInitiated() const
+{
+    return m_moveInitiated;
+}
+
+void ProjectViewState::setLastEditedClip(const trackedit::ClipKey& clipKey)
+{
+    if (m_lastEditedClip == clipKey) {
+        return;
+    }
+
+    m_lastEditedClip = clipKey;
+}
+
+au::trackedit::ClipKey ProjectViewState::lastEditedClip() const
+{
+    return m_lastEditedClip;
+}
+
+void ProjectViewState::setClipsBoundaries(const std::set<muse::secs_t>& boundaries)
+{
+    m_clipsBoundaries = boundaries;
+}
+
+std::set<muse::secs_t> ProjectViewState::clipsBoundaries() const
+{
+    return m_clipsBoundaries;
 }
 
 muse::ValCh<bool> ProjectViewState::altPressed() const

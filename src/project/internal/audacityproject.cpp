@@ -27,7 +27,7 @@ Ret Audacity4Project::createNew()
     m_au3Project->open();
     m_trackeditProject = trackeditProjectCreator()->create(m_au3Project);
     m_isNewlyCreated = true;
-    m_viewState = viewStateCreator()->createViewState();
+    m_viewState = viewStateCreator()->createViewState(m_au3Project);
 
     return muse::make_ret(Ret::Code::Ok);
 }
@@ -69,8 +69,11 @@ Ret Audacity4Project::import(const muse::io::path_t& path, bool forceMode)
 {
     std::string importInfo = muse::qtrc("project", "Imported file “%1”?")
                              .arg(path.toString()).toStdString();
+
+    Ret ok = doImport(path, forceMode);
     projectHistory()->pushHistoryState(importInfo, muse::trc("project", "Import"));
-    return doImport(path, forceMode);
+
+    return ok;
 }
 
 Ret Audacity4Project::import(const std::vector<muse::io::path_t>& paths, bool forceMode)
@@ -105,8 +108,7 @@ muse::Ret Audacity4Project::doLoad(const io::path_t& path, bool forceMode, const
 
     m_trackeditProject = trackeditProjectCreator()->create(m_au3Project);
 
-    //! NOTE At the moment, view state don't saved and loaded
-    m_viewState = viewStateCreator()->createViewState();
+    m_viewState = viewStateCreator()->createViewState(m_au3Project);
 
     return muse::make_ret(Ret::Code::Ok);
 }

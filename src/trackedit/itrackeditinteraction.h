@@ -11,13 +11,6 @@
 #include "types/ret.h"
 
 namespace au::trackedit {
-enum class TrackMoveDirection {
-    Up,
-    Down,
-    Top,
-    Bottom
-};
-
 //! NOTE Interface for interacting with the project
 //! When it gets big, maybe we’ll divide it into several
 //! Currently implemented in the au3wrap module
@@ -29,6 +22,7 @@ public:
     ~ITrackeditInteraction() override = default;
 
     virtual secs_t clipStartTime(const ClipKey& clipKey) const = 0;
+    virtual secs_t clipEndTime(const trackedit::ClipKey& clipKey) const = 0;
 
     //! NOTE Can be called by moving a clip
     //! if the changes is completed, then it is necessary to pass: `completed = true`
@@ -52,16 +46,17 @@ public:
     virtual bool cutClipIntoClipboard(const ClipKey& clipKey) = 0;
     virtual bool cutClipDataIntoClipboard(const TrackIdList& tracksIds, secs_t begin, secs_t end, bool moveClips) = 0;
     virtual bool copyClipIntoClipboard(const ClipKey& clipKey) = 0;
-    virtual bool copyClipDataIntoClipboard(const ClipKey& clipKey, secs_t begin, secs_t end) = 0;
     virtual bool copyNonContinuousTrackDataIntoClipboard(const TrackId trackId, const ClipKeyList& clipKeys, secs_t offset) = 0;
     virtual bool copyContinuousTrackDataIntoClipboard(const TrackId trackId, secs_t begin, secs_t end) = 0;
     virtual bool removeClip(const ClipKey& clipKey) = 0;
     virtual bool removeClips(const ClipKeyList& clipKeyList, bool moveClips) = 0;
     virtual bool removeTracksData(const TrackIdList& tracksIds, secs_t begin, secs_t end, bool moveClips) = 0;
     virtual bool moveClips(secs_t timePositionOffset, int trackPositionOffset, bool completed) = 0;
-    virtual bool splitTracksAt(const TrackIdList& tracksIds, secs_t pivot) = 0;
+    virtual bool splitTracksAt(const TrackIdList& tracksIds, std::vector<secs_t> pivots) = 0;
     virtual bool splitClipsAtSilences(const ClipKeyList& clipKeyList) = 0;
     virtual bool splitRangeSelectionAtSilences(const TrackIdList& tracksIds, secs_t begin, secs_t end) = 0;
+    virtual bool splitRangeSelectionIntoNewTracks(const TrackIdList& tracksIds, secs_t begin, secs_t end) = 0;
+    virtual bool splitClipsIntoNewTracks(const ClipKeyList& clipKeyList) = 0;
     virtual bool mergeSelectedOnTracks(const TrackIdList& tracksIds, secs_t begin, secs_t end) = 0;
     virtual bool duplicateSelectedOnTracks(const TrackIdList& tracksIds, secs_t begin, secs_t end) = 0;
     virtual bool duplicateClip(const ClipKey& clipKey) = 0;
@@ -70,10 +65,10 @@ public:
     virtual bool clipSplitDelete(const ClipKey& clipKey) = 0;
     virtual bool splitCutSelectedOnTracks(const TrackIdList tracksIds, secs_t begin, secs_t end) = 0;
     virtual bool splitDeleteSelectedOnTracks(const TrackIdList tracksIds, secs_t begin, secs_t end) = 0;
-    virtual bool trimClipLeft(const ClipKey& clipKey, secs_t deltaSec, secs_t minClipDuration, bool completed) = 0;
-    virtual bool trimClipRight(const ClipKey& clipKey, secs_t deltaSec, secs_t minClipDuration, bool completed) = 0;
-    virtual bool stretchClipLeft(const ClipKey& clipKey, secs_t deltaSec, secs_t minClipDuration, bool completed) = 0;
-    virtual bool stretchClipRight(const ClipKey& clipKey, secs_t deltaSec, secs_t minClipDuration, bool completed) = 0;
+    virtual bool trimClipLeft(const ClipKey& clipKey, secs_t deltaSec, secs_t minClipDuration, bool completed, UndoPushType type) = 0;
+    virtual bool trimClipRight(const ClipKey& clipKey, secs_t deltaSec, secs_t minClipDuration, bool completed, UndoPushType type) = 0;
+    virtual bool stretchClipLeft(const ClipKey& clipKey, secs_t deltaSec, secs_t minClipDuration, bool completed, UndoPushType type) = 0;
+    virtual bool stretchClipRight(const ClipKey& clipKey, secs_t deltaSec, secs_t minClipDuration, bool completed, UndoPushType type) = 0;
     virtual secs_t clipDuration(const ClipKey& clipKey) const = 0;
     virtual std::optional<secs_t> getLeftmostClipStartTime(const ClipKeyList& clipKeys) const = 0;
 

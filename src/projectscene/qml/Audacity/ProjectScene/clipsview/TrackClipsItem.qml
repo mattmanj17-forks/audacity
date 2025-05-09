@@ -1,5 +1,6 @@
 import QtQuick
 
+import Muse.Ui
 import Muse.UiComponents
 
 import Audacity.ProjectScene
@@ -8,6 +9,10 @@ Item {
 
     id: root
 
+    property NavigationSection navigationSection: null
+    property NavigationPanel navigationPanel: null
+
+    property int trackIdx: null
     property alias trackId: clipsModel.trackId
     property alias context: clipsModel.context
     property var canvas: null
@@ -45,17 +50,16 @@ Item {
 
     signal selectionDraged(var x1, var x2, var completed)
     signal seekToX(var x)
+    signal insureVerticallyVisible(var top, var bottom)
 
     signal clipHeaderHoveredChanged(bool val)
+
+    signal triggerGuideline(real x, bool completed)
 
     height: trackViewState.trackHeight
 
     ClipsListModel {
         id: clipsModel
-
-        onRequestClipTitleEdit: function(index){
-            repeator.itemAt(index).editTitle()
-        }
     }
 
     TracksViewStateModel {
@@ -193,6 +197,7 @@ Item {
 
             delegate: Loader {
                 property QtObject clipItem: model.item
+                property int index: model.index
 
                 height: parent.height
                 width: Math.max(3, clipItem.width)
@@ -235,6 +240,7 @@ Item {
             id: clipComp
 
             ClipItem {
+                id: item
 
                 context: root.context
                 canvas: root.canvas
@@ -254,6 +260,7 @@ Item {
                 multiSampleEdit: clipsContainer.multiSampleEdit
                 altPressed: root.altPressed
                 selectionInProgress: root.selectionInProgress || root.selectionEditInProgress
+                asymmetricStereoHeightsPossible: clipsModel.asymmetricStereoHeightsPossible
 
                 //! NOTE: use the same integer rounding as in WaveBitmapCache
                 selectionStart: root.context.selectionStartPosition < clipItem.x ? 0 : Math.floor(root.context.selectionStartPosition - clipItem.x + 0.5)
@@ -265,6 +272,19 @@ Item {
                 collapsed: trackViewState.isTrackCollapsed
                 channelHeightRatio: root.channelHeightRatio
                 showChannelSplitter: isStereo
+
+                navigation.name: Boolean(clipItem) ? clipItem.title + clipItem.index : ""
+                navigation.panel: root.navigationPanel
+                navigation.column: index
+                navigation.row: root.trackIdx
+                navigation.accessible.name: Boolean(clipItem) ? clipItem.title : ""
+                navigation.onActiveChanged: {
+                    if (navigation.active) {
+                        root.context.insureVisible(root.context.positionToTime(clipItem.x))
+                        root.insureVerticallyVisible(root.y, root.y + root.height)
+                    }
+                }
+
                 distanceToLeftNeighbor: {
                     let leftNeighbor = clipsModel.prev(clipItem.key)
                     if (!leftNeighbor) {
@@ -329,22 +349,32 @@ Item {
 
                 onClipEndEditRequested: function() {
                     clipsModel.endEditClip(clipItem.key)
+
+                    root.triggerGuideline(false, -1)
                 }
 
-                onClipLeftTrimRequested: function(completed) {
-                    clipsModel.trimLeftClip(clipItem.key, completed)
+                onClipLeftTrimRequested: function(completed, action) {
+                    clipsModel.trimLeftClip(clipItem.key, completed, action)
+
+                    handleGuideline(clipItem.key, Direction.Left, completed)
                 }
 
-                onClipRightTrimRequested: function(completed) {
-                    clipsModel.trimRightClip(clipItem.key, completed)
+                onClipRightTrimRequested: function(completed, action) {
+                    clipsModel.trimRightClip(clipItem.key, completed, action)
+
+                    handleGuideline(clipItem.key, Direction.Right, completed)
                 }
 
-                onClipLeftStretchRequested: function(completed) {
-                    clipsModel.stretchLeftClip(clipItem.key, completed)
+                onClipLeftStretchRequested: function(completed, action) {
+                    clipsModel.stretchLeftClip(clipItem.key, completed, action)
+
+                    handleGuideline(clipItem.key, Direction.Left, completed)
                 }
 
-                onClipRightStretchRequested: function(completed) {
-                    clipsModel.stretchRightClip(clipItem.key, completed)
+                onClipRightStretchRequested: function(completed, action) {
+                    clipsModel.stretchRightClip(clipItem.key, completed, action)
+
+                    handleGuideline(clipItem.key, Direction.Right, completed)
                 }
 
                 onStartAutoScroll: {
@@ -407,6 +437,10 @@ Item {
                     target: clipItem
                     function onWaveChanged() {
                         updateWave()
+                    }
+
+                    function onTitleEditRequested() {
+                        item.editTitle()
                     }
                 }
             }
@@ -534,12 +568,19 @@ Item {
 
             // clip might change its' track, we need to update grabbed clipKey
             if (clipMovedToOtherTrack) {
+                clipKey = clipsModel.updateClipTrack(clipKey)
                 setHoveredClipKey(clipsModel.updateClipTrack(clipKey));
             }
+
+            handleGuideline(clipKey, Direction.Auto, completed)
         }
 
         function onClipStartEditRequested(clipKey) {
             clipsModel.startEditClip(clipKey)
+        }
+
+        function onClipEndEditRequested(clipKey) {
+            clipsModel.endEditClip(clipKey)
         }
 
         function onStartAutoScroll() {
@@ -548,6 +589,13 @@ Item {
 
         function onStopAutoScroll() {
             root.context.stopAutoScroll()
+        }
+    }
+
+    function handleGuideline(clipKey, direction, completed) {
+        let guidelinePos = clipsModel.findGuideline(clipKey, direction)
+        if (guidelinePos) {
+            triggerGuideline(guidelinePos, completed)
         }
     }
 }

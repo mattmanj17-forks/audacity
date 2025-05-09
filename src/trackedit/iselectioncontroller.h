@@ -42,16 +42,19 @@ public:
     virtual void removeClipSelection(const ClipKey& clipKey) = 0;
     virtual muse::async::Channel<ClipKeyList> clipsSelected() const = 0;
 
-    //! NOTE: for now it's used only for ruler
-    //! hightlight when single clip is selected
     virtual double selectedClipStartTime() const = 0;
     virtual double selectedClipEndTime() const = 0;
+
+    // used to get range-like boundaries of multiple selected clips
+    virtual double leftMostSelectedClipStartTime() const = 0;
+    virtual double rightMostSelectedClipEndTime() const = 0;
 
     // data selection
     virtual void setSelectedTrackAudioData(trackedit::TrackId trackId) = 0;
     virtual void resetDataSelection() = 0;
     virtual bool timeSelectionIsNotEmpty() const = 0;
     virtual bool isDataSelectedOnTrack(TrackId trackId) const = 0;
+    virtual void setSelectedAllAudioData() = 0;
 
     virtual secs_t dataSelectedStartTime() const = 0;
     virtual void setDataSelectedStartTime(secs_t time, bool complete) = 0;

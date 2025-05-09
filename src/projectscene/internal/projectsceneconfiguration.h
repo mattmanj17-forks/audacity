@@ -3,16 +3,19 @@
 */
 #pragma once
 
-#include "../iprojectsceneconfiguration.h"
-
 #include "modularity/ioc.h"
+
 #include "ui/iuiconfiguration.h"
+#include "workspace/iworkspacemanager.h"
+
+#include "../iprojectsceneconfiguration.h"
 
 namespace au::projectscene {
 class ProjectSceneConfiguration : public IProjectSceneConfiguration
 {
 public:
     muse::Inject<muse::ui::IUiConfiguration> uiConfiguration;
+    muse::Inject<muse::workspace::IWorkspaceManager> workspaceManager;
 
 public:
     ProjectSceneConfiguration() = default;
@@ -22,12 +25,6 @@ public:
     bool isVerticalRulersVisible() const override;
     void setVerticalRulersVisible(bool visible) override;
     muse::async::Channel<bool> isVerticalRulersVisibleChanged() const override;
-
-    trackedit::secs_t insertSilenceDuration() const override;
-    void setInsertSilenceDuration(const trackedit::secs_t duration) override;
-
-    std::string insertSilenceDurationFormat() const override;
-    void setInsertSilenceDurationFormat(const std::string& format) override;
 
     double zoom() const override;
 
@@ -48,9 +45,19 @@ public:
     void setClipStyle(ClipStyles::Style style) override;
     muse::async::Channel<ClipStyles::Style> clipStyleChanged() const override;
 
+    StereoHeightsPref::AsymmetricStereoHeights stereoHeightsPref() const override;
+    void setStereoHeightsPref(StereoHeightsPref::AsymmetricStereoHeights pref) override;
+    muse::async::Notification stereoHeightsPrefChanged() const override;
+
+    std::vector<std::string> asymmetricStereoHeightsWorkspaces() const override;
+    void setAsymmetricStereoHeightsWorkspaces(std::vector<std::string>& workspaces) override;
+    muse::async::Notification asymmetricStereoHeightsWorkspacesChanged() const override;
+
 private:
     muse::async::Channel<bool> m_isVerticalRulersVisibleChanged;
     muse::async::Channel<ClipStyles::Style> m_clipStyleChanged;
     muse::async::Notification m_effectsPanelVisible;
+    muse::async::Notification m_asymmetricStereoHeightsChanged;
+    muse::async::Notification m_asymmetricStereoHeightsWorkspacesChanged;
 };
 }

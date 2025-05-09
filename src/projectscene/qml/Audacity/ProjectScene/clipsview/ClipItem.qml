@@ -21,9 +21,12 @@ Rectangle {
     property alias channelHeightRatio: channelSplitter.channelHeightRatio
     property var canvas: null
     property color clipColor: "#677CE4"
-    property color currentClipHeaderColor: root.currentClipStyle == ClipStyle.COLORFUL ? root.clipColor : root.classicHeaderColor
-    readonly property color classicHeaderColor: "#C3C8EC"
-    readonly property color classicHeaderSelectedColor: "#ACC3F0"
+    property color normalHeaderColor: root.currentClipStyle == ClipStyle.COLORFUL ? root.clipColor : root.classicHeaderColor
+    property color selectedHeaderColor: root.currentClipStyle == ClipStyle.COLORFUL ? ui.blendColors("#ffffff", root.clipColor, 0.3) : classicHeaderColor
+    property color normalHeaderHoveredColor: root.currentClipStyle == ClipStyle.COLORFUL ? ui.blendColors("#ffffff", root.clipColor, 0.8) : classicHeaderHoveredColor
+    property color selectedHeaderHoveredColor: root.currentClipStyle == ClipStyle.COLORFUL ? ui.blendColors("#ffffff", root.clipColor, 0.2) : classicHeaderHoveredColor
+    readonly property color classicHeaderColor: "#D0D6F2"
+    readonly property color classicHeaderHoveredColor: "#B0B6D8"
     property int currentClipStyle: ClipStyle.COLORFUL
     property int groupId: -1
     property bool clipSelected: false
@@ -47,13 +50,15 @@ Rectangle {
 
     property bool multiSampleEdit: false
 
+    property bool asymmetricStereoHeightsPossible: false
+
     signal clipStartEditRequested()
     signal clipEndEditRequested()
 
-    signal clipLeftTrimRequested(bool completed)
-    signal clipRightTrimRequested(bool completed)
-    signal clipLeftStretchRequested(bool completed);
-    signal clipRightStretchRequested(bool completed);
+    signal clipLeftTrimRequested(bool completed, int action)
+    signal clipRightTrimRequested(bool completed, int action)
+    signal clipLeftStretchRequested(bool completed, int action);
+    signal clipRightStretchRequested(bool completed, int action);
 
     signal requestSelected()
     signal requestSelectionReset()
@@ -77,6 +82,8 @@ Rectangle {
     signal clipItemMousePositionChanged(real x, real y)
     signal clipHeaderHoveredChanged(bool value)
 
+    property alias navigation: navCtrl
+
     radius: 4
     color: clipSelected ? "white" : clipColor
     border.color: "#000000"
@@ -96,8 +103,59 @@ Rectangle {
     property alias leftTrimPressedButtons: leftTrimStretchEdgeHover.pressedButtons
     property alias rightTrimPressedButtons: rightTrimStretchEdgeHover.pressedButtons
 
+    // for navigating between clips
+    NavigationControl {
+        id: navCtrl
+        name: root.name
+        enabled: root.enabled && root.visible
+
+        accessible.role: MUAccessible.Button
+        accessible.name: root.name
+
+        onActiveChanged: function(active) {
+            if (active) {
+                root.forceActiveFocus()
+            }
+        }
+
+        onTriggered: {
+            clipNavigationPanel.requestActive()
+        }
+    }
+
+    NavigationFocusBorder {
+        navigationCtrl: navCtrl
+    }
+
+    // panel for navigating within the clip's items
+    property NavigationPanel clipNavigationPanel: NavigationPanel {
+        name: "ClipNavigationPanel"
+        enabled: navCtrl.active
+        direction: NavigationPanel.Horizontal
+        section: navigation.panel.section
+        onActiveChanged: function(active) {
+            if (active) {
+                root.forceActiveFocus()
+            }
+        }
+
+        onNavigationEvent: function(event) {
+            if (event.type === NavigationEvent.Escape && !clipHandles.leftTrimActive
+                    && !clipHandles.rightTrimActive && !clipHandles.leftStretchActive
+                    && !clipHandles.rightStretchActive) {
+                navCtrl.requestActive()
+            }
+        }
+    }
+
     onHeaderHoveredChanged: {
         root.clipHeaderHoveredChanged(headerHovered)
+    }
+
+    onAsymmetricStereoHeightsPossibleChanged: {
+        if (!asymmetricStereoHeightsPossible) {
+            root.ratioChanged(showChannelSplitter ? 0.5 : 1)
+        }
     }
 
     function editTitle() {
@@ -142,6 +200,10 @@ Rectangle {
     ClipContextMenuModel {
         id: singleClipContextMenuModel
         clipKey: root.clipKey
+
+        onClipTitleEditRequested: {
+            root.editTitle()
+        }
     }
 
     ContextMenuLoader {
@@ -241,9 +303,9 @@ Rectangle {
 
         onReleased: function(e) {
             if (e.modifiers & (Qt.AltModifier | Qt.MetaModifier)) {
-                root.clipLeftStretchRequested(true)
+                root.clipLeftStretchRequested(true, ClipBoundaryAction.Shrink)
             } else {
-                root.clipLeftTrimRequested(true)
+                root.clipLeftTrimRequested(true, ClipBoundaryAction.Shrink)
             }
 
             root.stopAutoScroll()
@@ -257,11 +319,11 @@ Rectangle {
 
             if (e.modifiers & (Qt.AltModifier | Qt.MetaModifier)) {
                 if (pressed) {
-                    root.clipLeftStretchRequested(false)
+                    root.clipLeftStretchRequested(false, ClipBoundaryAction.Shrink)
                 }
             } else {
                 if (pressed) {
-                    root.clipLeftTrimRequested(false)
+                    root.clipLeftTrimRequested(false, ClipBoundaryAction.Shrink)
                 }
             }
         }
@@ -298,9 +360,9 @@ Rectangle {
 
         onReleased: function(e) {
             if (e.modifiers & (Qt.AltModifier | Qt.MetaModifier)) {
-                root.clipRightStretchRequested(true)
+                root.clipRightStretchRequested(true, ClipBoundaryAction.Shrink)
             } else {
-                root.clipRightTrimRequested(true)
+                root.clipRightTrimRequested(true, ClipBoundaryAction.Shrink)
             }
 
             root.stopAutoScroll()
@@ -314,11 +376,11 @@ Rectangle {
 
             if (e.modifiers & (Qt.AltModifier | Qt.MetaModifier)) {
                 if (pressed) {
-                    root.clipRightStretchRequested(false)
+                    root.clipRightStretchRequested(false, ClipBoundaryAction.Shrink)
                 }
             } else {
                 if (pressed) {
-                    root.clipRightTrimRequested(false)
+                    root.clipRightTrimRequested(false, ClipBoundaryAction.Shrink)
                 }
             }
         }
@@ -359,8 +421,8 @@ Rectangle {
                 anchors.top: header.top
                 anchors.bottom: header.bottom
 
-                color: currentClipStyle == ClipStyle.COLORFUL ? waveView.transformColor(clipColor) : classicHeaderSelectedColor
-                visible: root.isDataSelected
+                color: waveView.transformColor(clipColor)
+                visible: root.isDataSelected && currentClipStyle == ClipStyle.COLORFUL
             }
 
             MouseArea {
@@ -388,7 +450,9 @@ Rectangle {
                         root.editTitle()
                     } else {
                         //! NOTE Handle singleClick logic
-                        root.requestSelected()
+                        if (!root.multiClipsSelected) {
+                            root.requestSelected()
+                        }
 
                         lastClickTime = currentTime;
                     }
@@ -416,6 +480,28 @@ Rectangle {
                 anchors.leftMargin: root.leftVisibleMargin + 4
                 anchors.rightMargin: 8
                 horizontalAlignment: Qt.AlignLeft
+
+                NavigationControl {
+                    id: titleEditNavCtrl
+                    name: "TitleEditNavCtrl"
+                    enabled: root.enabled && root.visible
+                    panel: root.clipNavigationPanel
+                    column: 3
+
+                    accessible.enabled: titleEditNavCtrl.enabled
+
+                    onTriggered: {
+                        root.editTitle()
+                    }
+                }
+
+                NavigationFocusBorder {
+                    navigationCtrl: titleEditNavCtrl
+
+                    anchors.topMargin: 1
+                    anchors.bottomMargin: 0
+                    radius: 5
+                }
             }
 
             Loader {
@@ -438,6 +524,7 @@ Rectangle {
 
             Component {
                 id: titleEditComp
+
                 TextInputField {
                     id: titleEdit
 
@@ -467,6 +554,7 @@ Rectangle {
                     onFocusChanged: {
                         if (!titleEdit.focus) {
                             titleEdit.visible = false
+                            titleEdit.accepted()
                         }
                     }
                 }
@@ -533,13 +621,19 @@ Rectangle {
 
                     menuModel: (root.multiClipsSelected || root.groupId != -1) ? multiClipContextMenuModel : singleClipContextMenuModel
 
+                    navigation.name: "ClipMenuBtn"
+                    navigation.panel: root.clipNavigationPanel
+                    navigation.column: 4
+
                     onHandleMenuItem: function(itemId) {
                         Qt.callLater(menuModel.handleMenuItem, itemId)
                     }
 
                     onClicked: {
                         if (!root.multiClipsSelected) {
-                            root.requestSelectionReset()
+                            if (!root.clipSelected) {
+                                root.requestSelectionReset()
+                            }
                             root.requestSelected()
                         }
                     }
@@ -559,6 +653,8 @@ Rectangle {
             clipColor: root.clipColor
             clipSelected: root.clipSelected
             isIsolationMode: root.isIsolationMode
+            multiSampleEdit: root.multiSampleEdit
+            isBrush: root.isBrush
 
             function onWaveViewPositionChanged(x, y) {
                 if (waveView.isIsolationMode) {
@@ -579,13 +675,40 @@ Rectangle {
 
                 anchors.fill: parent
 
-                editable: root.enableCursorInteraction
+                editable: root.enableCursorInteraction && root.asymmetricStereoHeightsPossible
+                asymmetricStereoHeightsPossible: root.asymmetricStereoHeightsPossible
 
                 color: "#000000"
                 opacity: 0.10
 
                 onRatioChanged: function (ratio) {
                     root.ratioChanged(ratio)
+                }
+            }
+
+            FlatButton {
+                id: accessibilitySelectBtn
+
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 10
+
+                navigation.name: "SelectBtn"
+                navigation.panel: root.clipNavigationPanel
+                navigation.column: 0
+
+                width: 55
+                height: 20
+                text: !root.clipSelected ? qsTrc("clips", "Select") : qsTrc("clips", "Deselect")
+                visible: root.clipNavigationPanel.highlight
+                normalColor: "#2b2a33"
+
+                onClicked: {
+                    if (!root.clipSelected) {
+                        root.requestSelected()
+                    } else {
+                        root.requestSelectionReset()
+                    }
                 }
             }
 
@@ -631,6 +754,8 @@ Rectangle {
         handlesVisible: root.clipSelected && !root.moveActive
         canvas: root.canvas
 
+        clipNavigationPanel: root.clipNavigationPanel
+
         onClipHandlesMousePositionChanged: function(xWithinClipHandles, yWithinClipHandles) {
             var xWithinClipItem = xWithinClipHandles
             var yWithinClipItem = header.height + 1 + yWithinClipHandles
@@ -645,20 +770,20 @@ Rectangle {
             root.clipEndEditRequested()
         }
 
-        onTrimLeftRequested: function(completed) {
-            root.clipLeftTrimRequested(completed)
+        onTrimLeftRequested: function(completed, action) {
+            root.clipLeftTrimRequested(completed, action)
         }
 
-        onTrimRightRequested: function(completed) {
-            root.clipRightTrimRequested(completed)
+        onTrimRightRequested: function(completed, action) {
+            root.clipRightTrimRequested(completed, action)
         }
 
-        onStretchLeftRequested: function(completed) {
-            root.clipLeftStretchRequested(completed)
+        onStretchLeftRequested: function(completed, action) {
+            root.clipLeftStretchRequested(completed, action)
         }
 
-        onStretchRightRequested: function(completed) {
-            root.clipRightStretchRequested(completed)
+        onStretchRightRequested: function(completed, action) {
+            root.clipRightStretchRequested(completed, action)
         }
 
         onStopAutoScroll: {
@@ -671,7 +796,7 @@ Rectangle {
         State {
             name: "NORMAL"
             when: !root.clipSelected && !headerDragArea.containsMouse
-            PropertyChanges { target: header; color: root.currentClipHeaderColor}
+            PropertyChanges { target: header; color: root.normalHeaderColor}
             PropertyChanges { target: titleLabel; color: "#000000"}
             PropertyChanges { target: pitchBtn; textColor: "#000000"; iconColor: "#000000" }
             PropertyChanges { target: speedBtn; textColor: "#000000"; iconColor: "#000000" }
@@ -681,7 +806,7 @@ Rectangle {
         State {
             name: "SELECTED"
             when: root.clipSelected && !headerDragArea.containsMouse
-            PropertyChanges { target: header; color: ui.blendColors("#ffffff", root.currentClipHeaderColor, 0.3) }
+            PropertyChanges { target: header; color: root.selectedHeaderColor }
             PropertyChanges { target: titleLabel; color: "#000000" }
             PropertyChanges { target: pitchBtn; textColor: "#000000"; iconColor: "#000000" }
             PropertyChanges { target: speedBtn; textColor: "#000000"; iconColor: "#000000" }
@@ -691,7 +816,7 @@ Rectangle {
         State {
             name: "NORMAL_HEADER_HOVERED"
             when: !root.clipSelected && headerDragArea.containsMouse
-            PropertyChanges { target: header; color: ui.blendColors("#ffffff", root.currentClipHeaderColor, 0.8)}
+            PropertyChanges { target: header; color: root.normalHeaderHoveredColor }
             PropertyChanges { target: titleLabel; color: "#000000"}
             PropertyChanges { target: pitchBtn; textColor: "#000000"; iconColor: "#000000" }
             PropertyChanges { target: speedBtn; textColor: "#000000"; iconColor: "#000000" }
@@ -701,7 +826,7 @@ Rectangle {
         State {
             name: "SELECTED_HEADER_HOVERED"
             when: root.clipSelected && headerDragArea.containsMouse
-            PropertyChanges { target: header; color: ui.blendColors("#ffffff", root.currentClipHeaderColor, 0.2) }
+            PropertyChanges { target: header; color: root.selectedHeaderHoveredColor }
             PropertyChanges { target: titleLabel; color: "#000000"}
             PropertyChanges { target: pitchBtn; textColor: "#000000"; iconColor: "#000000" }
             PropertyChanges { target: speedBtn; textColor: "#000000"; iconColor: "#000000" }

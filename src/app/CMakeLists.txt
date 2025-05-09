@@ -86,6 +86,7 @@ set(LINK_LIB
     appshell
     au3wrap
     context
+    effects_vst
     project
     projectscene
     audio
@@ -98,7 +99,7 @@ set(LINK_LIB
 )
 
 if (AU_MODULE_EFFECTS_VST)
-    list(APPEND LINK_LIB effects_vst muse::vst)
+    list(APPEND LINK_LIB muse::vst)
     add_definitions(-DAU_MODULE_EFFECTS_VST)
 endif()
 
@@ -125,9 +126,19 @@ add_executable(${EXECUTABLE_NAME}
     commandlineparser.h
 )
 
-target_include_directories(audacity PUBLIC
+###########################################
+# Includes
+###########################################
+
+target_include_directories(audacity PRIVATE
+    ${PROJECT_BINARY_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
+
     ${PROJECT_SOURCE_DIR}/src
-    ${PROJECT_SOURCE_DIR}/src/framework
+
+    ${MUSE_FRAMEWORK_PATH}
+    ${MUSE_FRAMEWORK_PATH}/framework
+    ${MUSE_FRAMEWORK_PATH}/framework/global
 )
 
 

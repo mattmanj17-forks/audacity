@@ -8,6 +8,8 @@
 #include "types/translatablestring.h"
 #include "log.h"
 
+#include <unordered_map>
+
 using namespace au::effects;
 using namespace muse;
 using namespace muse::ui;
@@ -23,27 +25,12 @@ static UiActionList STATIC_ACTIONS = {
              REPEAT_LAST_EFFECT_DEF_TITLE,
              TranslatableString("action", "Repeat last effect")
              ),
-
-    UiAction("realtimeeffect-add",
-             au::context::UiCtxProjectOpened,
-             au::context::CTX_PROJECT_OPENED,
-             TranslatableString("action", "Add realtime effect"),
-             TranslatableString("action", "Add realtime effect")
-             ),
     UiAction("realtimeeffect-remove",
              au::context::UiCtxProjectOpened,
              au::context::CTX_PROJECT_OPENED,
              TranslatableString("action", "Remove realtime effect"),
              TranslatableString("action", "Remove realtime effect")
              ),
-    UiAction("realtimeeffect-replace",
-             au::context::UiCtxProjectOpened,
-             au::context::CTX_PROJECT_OPENED,
-             TranslatableString("action", "Replace realtime effect"),
-             TranslatableString("action", "Replace realtime effect"),
-             muse::ui::Checkable::Yes
-             ),
-
     UiAction("action://effects/presets/apply",
              au::context::UiCtxAny,
              au::context::CTX_ANY,
@@ -79,6 +66,63 @@ EffectsUiActions::EffectsUiActions(std::shared_ptr<EffectsActionsController> con
 {
 }
 
+namespace {
+UiAction makeUiAction(const char16_t* uri, const EffectMeta& meta)
+{
+    UiAction action;
+    action.code = makeEffectAction(uri, meta.id).toString();
+    action.uiCtx = au::context::UiCtxProjectOpened;
+    action.scCtx = au::context::CTX_PROJECT_FOCUSED;
+    action.description = TranslatableString::untranslatable(meta.description);
+    action.title = TranslatableString::untranslatable(meta.title);
+    return action;
+}
+
+// It can be that different plugins have the same name. Seeing them side by side in a menu is confusing for the user.
+// To mitigate this, we replace the title with the path of the plugin.
+void replaceIdenticalTitlesWithPaths(EffectMetaList& effects)
+{
+    using DuplicationKey = std::tuple<EffectFamily, EffectType, muse::String, muse::String>;
+
+    std::map<DuplicationKey, std::vector<size_t> > duplicateMap;
+
+    for (auto i = 0u; i < effects.size(); ++i) {
+        const auto& effect = effects[i];
+        DuplicationKey key{ effect.family, effect.type, effect.category, effect.title };
+        duplicateMap[key].push_back(i);
+    }
+
+    for (const auto&[_, indices] : duplicateMap) {
+        if (indices.size() == 1) {
+            continue;
+        }
+        for (const size_t index : indices) {
+            auto& meta = effects[index];
+            meta.title = meta.path.toString();
+        }
+    }
+}
+}
+
+void EffectsUiActions::makeActions(EffectMetaList effects)
+{
+    m_actions.clear();
+    m_actions.reserve(effects.size() + STATIC_ACTIONS.size());
+
+    replaceIdenticalTitlesWithPaths(effects);
+
+    for (const EffectMeta& e : effects) {
+        m_actions.push_back(makeUiAction(EFFECT_OPEN_ACTION, e));
+        if (e.isRealtimeCapable) {
+            for (const auto uri : { REALTIME_EFFECT_ADD_ACTION, REALTIME_EFFECT_REPLACE_ACTION }) {
+                m_actions.push_back(makeUiAction(uri, e));
+            }
+        }
+    }
+
+    m_actions.insert(m_actions.end(), STATIC_ACTIONS.begin(), STATIC_ACTIONS.end());
+}
+
 void EffectsUiActions::reload()
 {
     effectExecutionScenario()->lastProcessorIdChanged().onReceive(this, [this](const EffectId& effectId) {
@@ -93,28 +137,10 @@ void EffectsUiActions::reload()
         m_actionsChanged.send({ *it });
     });
 
-    auto makeActions = [this](const EffectMetaList& effects) {
-        m_actions.clear();
-        m_actions.reserve(effects.size() + STATIC_ACTIONS.size());
-
-        for (const EffectMeta& e : effects) {
-            UiAction action;
-            action.code = makeEffectOpenAction(e.id).toString();
-            action.uiCtx = context::UiCtxProjectOpened;
-            action.scCtx = context::CTX_PROJECT_FOCUSED;
-            action.description = TranslatableString::untranslatable(e.description);
-            action.title = TranslatableString::untranslatable(e.title);
-
-            m_actions.push_back(std::move(action));
-        }
-
-        m_actions.insert(m_actions.end(), STATIC_ACTIONS.begin(), STATIC_ACTIONS.end());
-    };
-
     EffectMetaList metaList = effectsProvider()->effectMetaList();
     makeActions(metaList);
 
-    effectsProvider()->effectMetaListChanged().onNotify(this, [this, makeActions]() {
+    effectsProvider()->effectMetaListChanged().onNotify(this, [this] {
         EffectMetaList metaList = effectsProvider()->effectMetaList();
         makeActions(metaList);
     });

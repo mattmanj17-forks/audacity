@@ -226,6 +226,8 @@ DockPage {
             minimumWidth: panelWidth
             maximumWidth: panelWidth
 
+            minimumHeight: 83
+
             groupName: root.verticalPanelsGroup
 
             dropDestinations: root.verticalPanelDropDestinations
@@ -303,6 +305,8 @@ DockPage {
 
     central: TracksClipsView {
         id: clipsView
+
+        navigationSection: tracksPanel.navigationSection
     }
 
     statusBar: DockStatusBar {
