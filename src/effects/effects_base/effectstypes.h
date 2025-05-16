@@ -15,6 +15,15 @@ class RealtimeEffectState;
 class EffectSettingsAccess;
 struct EffectSettings;
 class wxString;
+
+namespace muse {
+class String;
+namespace uicomponents {
+class MenuItem;
+using MenuItemList = QList<MenuItem*>;
+}
+}
+
 namespace au::effects {
 using secs_t = muse::number_t<double>;
 using percent_t = muse::number_t<float>;
@@ -34,14 +43,34 @@ using RealtimeEffectStatePtr = std::shared_ptr<RealtimeEffectState>;
 using TrackId = long;
 using EffectChainLinkIndex = int;
 
+enum class EffectMenuOrganization {
+    ByCategory = 0,
+    ByType = 1,
+};
+
+enum class EffectFamily {
+    Unknown = -1,
+    Builtin,
+    VST3,
+};
+
+enum class EffectType {
+    Unknown = -1,
+    Analyzer,
+    Generator,
+    Processor,
+};
+
 struct EffectMeta {
     EffectId id;
+    EffectFamily family = EffectFamily::Unknown;
+    EffectType type = EffectType::Unknown;
     muse::String title;
     muse::String description;
-    muse::String version;
     muse::String vendor;
+    muse::io::path_t path;
 
-    muse::String categoryId;
+    muse::String category;
 
     bool isRealtimeCapable = false;
     bool supportsMultipleClipSelection = true;
@@ -52,23 +81,35 @@ struct EffectMeta {
 using EffectMetaList = std::vector<EffectMeta>;
 
 constexpr const char16_t* EFFECT_OPEN_ACTION = u"action://effects/open?effectId=%1";
-inline muse::actions::ActionQuery makeEffectOpenAction(const EffectId& id)
+constexpr const char16_t* REALTIME_EFFECT_ADD_ACTION = u"action://effects/realtime-add?effectId=%1";
+constexpr const char16_t* REALTIME_EFFECT_REPLACE_ACTION = u"action://effects/realtime-replace?effectId=%1";
+
+constexpr const char16_t* EFFECT_VIEWER_URI = u"audacity://effects/effect_viewer?instanceId=%1&isVst=%2";
+
+inline muse::actions::ActionQuery makeEffectAction(const char16_t* action, const EffectId id)
 {
-    return muse::actions::ActionQuery(muse::String(EFFECT_OPEN_ACTION).arg(id));
+    return muse::actions::ActionQuery(muse::String(action).arg(id));
 }
 
-struct EffectCategory {
-    muse::String id;
-    muse::String title;
+inline EffectId effectIdFromAction(const muse::actions::ActionQuery& action)
+{
+    return EffectId::fromStdString(action.param("effectId").toString());
+}
 
-    bool isValid() const { return !id.empty(); }
-};
-
-using EffectCategoryList = std::vector<EffectCategory>;
-
-constexpr const char16_t* VST_CATEGORY_ID = u"vst";
-constexpr const char16_t* BUILTIN_CATEGORY_ID = u"builtin";
+inline EffectId effectIdFromAction(const QString& action)
+{
+    return effectIdFromAction(muse::actions::ActionQuery { action });
+}
 
 using PresetId = wxString;
 using PresetIdList = std::vector<PresetId>;
+
+class IEffectMenuItemFactory
+{
+public:
+    virtual ~IEffectMenuItemFactory() = default;
+    virtual muse::uicomponents::MenuItem* makeMenuSeparator() = 0;
+    virtual muse::uicomponents::MenuItem* makeMenuEffectItem(const EffectId& effectId) = 0;
+    virtual muse::uicomponents::MenuItem* makeMenuEffect(const muse::String& title, const muse::uicomponents::MenuItemList& items) = 0;
+};
 }

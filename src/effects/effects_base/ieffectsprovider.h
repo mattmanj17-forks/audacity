@@ -25,9 +25,8 @@ public:
     virtual EffectMetaList effectMetaList() const = 0;
     virtual muse::async::Notification effectMetaListChanged() const = 0;
 
-    virtual EffectCategoryList effectsCategoryList() const = 0;
-
     virtual EffectMeta meta(const EffectId& effectId) const = 0;
+    virtual bool loadEffect(const EffectId& effectId) const = 0;
     virtual std::string effectName(const std::string& effectId) const = 0;
     virtual std::string effectName(const effects::RealtimeEffectState& state) const = 0;
     virtual std::string effectSymbol(const std::string& effectId) const = 0;
@@ -39,7 +38,6 @@ public:
 
     virtual void showEffect(const RealtimeEffectStatePtr& state) const = 0;
     virtual void hideEffect(const RealtimeEffectStatePtr& state) const = 0;
-    virtual void toggleShowEffect(const RealtimeEffectStatePtr& state) const = 0;
 
     virtual muse::Ret performEffect(au3::Au3Project& project, Effect* effect, std::shared_ptr<EffectInstance> effectInstance,
                                     EffectSettings& settings) = 0;

@@ -3,6 +3,8 @@
 */
 #include "clipcontextmenumodel.h"
 
+#include "translation.h"
+
 using namespace au::projectscene;
 using namespace muse::uicomponents;
 using namespace muse::actions;
@@ -36,19 +38,19 @@ void ClipContextMenuModel::load()
 
     MenuItemList items {
         makeItemWithArg("clip-properties"),
-        makeItemWithArg("clip-rename"),
+        makeItemWithArg("rename-clip"),
         makeMenu(muse::TranslatableString("clip", "Clip color"), colorItems, "colorMenu"),
         makeSeparator(),
         makeItemWithArg("copy"),
         makeItemWithArg("duplicate"),
         makeItemWithArg("cut"),
         makeSeparator(),
-        makeItemWithArg("track-split"),
+        makeItemWithArg("split"),
         makeSeparator(),
         makeItemWithArg("clip-export"),
         makeSeparator(),
         enableStretchItem,
-        makeItemWithArg("clip-pitch-speed"),
+        makeItemWithArg("clip-pitch-speed-open"),
         makeItemWithArg("clip-render-pitch-speed"),
     };
 
@@ -56,6 +58,11 @@ void ClipContextMenuModel::load()
 
     updateColorCheckedState();
     updateColorMenu();
+}
+
+void ClipContextMenuModel::handleMenuItem(const QString& itemId)
+{
+    AbstractMenuModel::handleMenuItem(itemId);
 }
 
 ClipKey ClipContextMenuModel::clipKey() const
@@ -148,9 +155,9 @@ MenuItemList ClipContextMenuModel::makeClipColourItems()
 
     const auto& colors = projectSceneConfiguration()->clipColors();
     for (const auto& color : colors) {
-        items << makeMenuItem(makeColorChangeAction(color.second).toString(),
+        items << makeMenuItem(makeClipColorChangeAction(color.second).toString(),
                               muse::TranslatableString("clip", muse::String::fromStdString(color.first)));
-        m_colorChangeActionCodeList.push_back(makeColorChangeAction(color.second).toString());
+        m_colorChangeActionCodeList.push_back(makeClipColorChangeAction(color.second).toString());
     }
 
     return items;

@@ -2,6 +2,8 @@
  * Audacity: A Digital Audio Editor
  */
 #include "realtimeeffectlistitemmenumodel.h"
+#include "effects/effects_base/effectstypes.h"
+#include "effects/effects_base/effectsutils.h"
 #include "libraries/lib-realtime-effects/RealtimeEffectState.h"
 #include "global/defer.h"
 #include "log.h"
@@ -30,25 +32,12 @@ void RealtimeEffectListItemMenuModel::doPopulateMenu()
 {
     MenuItemList items;
 
-    const auto categoryList = effectsProvider()->effectsCategoryList();
-    std::unordered_map<String, MenuItemList> menuCategories;
-
     items << makeMenuItem("realtimeeffect-remove", muse::TranslatableString("projectscene", "No effect")) << makeSeparator();
 
-    // Populate with available realtime effect.
-    for (const effects::EffectMeta& meta : effectsProvider()->effectMetaList()) {
-        if (!meta.isRealtimeCapable) {
-            continue;
-        }
-        MenuItem* item = makeMenuItem("realtimeeffect-replace", muse::TranslatableString::untranslatable(meta.title));
-        item->setArgs(actions::ActionData::make_arg1(effects::EffectId { meta.id }));
-        menuCategories[meta.categoryId].push_back(item);
-    }
-
-    for (const auto& entry : menuCategories) {
-        MenuItem* const menu = makeMenu(muse::TranslatableString::untranslatable(entry.first), entry.second);
-        menu->setCheckable(true);
-        items << menu;
+    const auto effectMenus = effects::utils::effectMenus(
+        effectsConfiguration()->realtimeEffectOrganization(), effectsProvider()->effectMetaList(), m_effectFilter, *this);
+    if (!effectMenus.empty()) {
+        items << makeSeparator() << effectMenus;
     }
 
     setItems(items);
@@ -63,16 +52,13 @@ void RealtimeEffectListItemMenuModel::handleMenuItem(const QString& itemId)
         return;
     }
 
-    if (menuItem.id() == "realtimeeffect-replace") {
-        const auto effectId = menuItem.args().arg<effects::EffectId>(0);
+    if (menuItem.id() == "realtimeeffect-remove") {
+        realtimeEffectService()->removeRealtimeEffect(*tId, m_effectState);
+    } else {
+        const auto effectId = effects::effectIdFromAction(menuItem.id());
         if (const RealtimeEffectStatePtr newState = realtimeEffectService()->replaceRealtimeEffect(*tId, m_effectState, effectId)) {
             effectsProvider()->showEffect(newState);
         }
-    } else if (menuItem.id() == "realtimeeffect-remove") {
-        realtimeEffectService()->removeRealtimeEffect(*tId, m_effectState);
-    } else {
-        assert(false);
-        LOGE() << "Unknown menu item id: " << itemId.toStdString();
     }
 }
 
@@ -96,17 +82,45 @@ void RealtimeEffectListItemMenuModel::prop_setEffectState(effects::RealtimeEffec
     emit effectStateChanged();
 }
 
+namespace {
+bool updateCheckmarks(MenuItem& item, const au::effects::EffectId& selectedEffectId)
+{
+    if (item.subitems().empty()) {
+        const auto itemEffectId = au::effects::effectIdFromAction(item.id());
+        const auto checked = itemEffectId == selectedEffectId;
+        item.setChecked(checked);
+        return checked;
+    } else {
+        auto checked = false;
+        for (MenuItem* subItem : item.subitems()) {
+            checked |= updateCheckmarks(*subItem, selectedEffectId);
+        }
+        item.setChecked(checked);
+        return checked;
+    }
+}
+}
+
 void RealtimeEffectListItemMenuModel::updateEffectCheckmarks()
 {
     const MenuItemList& itemList = items();
     const auto myEffectId = muse::String::fromStdString(m_effectState->GetID().ToStdString());
     for (MenuItem* category : itemList) {
-        auto categoryChecked = false;
-        for (MenuItem* subItem : category->subitems()) {
-            const auto effectId = subItem->args().arg<effects::EffectId>(0);
-            categoryChecked |= myEffectId == effectId;
-            subItem->setChecked(myEffectId == effectId);
-        }
-        category->setChecked(categoryChecked);
+        updateCheckmarks(*category, myEffectId);
     }
+}
+
+muse::uicomponents::MenuItem* RealtimeEffectListItemMenuModel::makeMenuEffectItem(const effects::EffectId& effectId)
+{
+    auto item = makeMenuItem(effects::makeEffectAction(effects::REALTIME_EFFECT_REPLACE_ACTION, effectId).toString());
+    item->setCheckable(true);
+    return item;
+}
+
+muse::uicomponents::MenuItem* RealtimeEffectListItemMenuModel::makeMenuEffect(const muse::String& title,
+                                                                              const muse::uicomponents::MenuItemList& items)
+{
+    auto menu = makeMenu(muse::TranslatableString::untranslatable(title), items);
+    menu->setCheckable(true);
+    return menu;
 }

@@ -14,6 +14,11 @@ RealtimeEffectListItemModel::RealtimeEffectListItemModel(QObject* parent, effect
             emit isActiveChanged();
         }
     });
+
+    realtimeEffectService()->effectSettingsChanged().onNotify(this, [this]
+    {
+        emit isActiveChanged();
+    });
 }
 
 RealtimeEffectListItemModel::~RealtimeEffectListItemModel()
@@ -49,9 +54,9 @@ effects::RealtimeEffectStatePtr RealtimeEffectListItemModel::effectState() const
     return m_effectState.lock();
 }
 
-void RealtimeEffectListItemModel::toggleDialog()
+void RealtimeEffectListItemModel::showEffectDialog()
 {
-    effectsProvider()->toggleShowEffect(m_effectState.lock());
+    effectsProvider()->showEffect(m_effectState.lock());
 }
 
 bool RealtimeEffectListItemModel::prop_isActive() const

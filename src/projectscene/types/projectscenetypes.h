@@ -79,8 +79,8 @@ public:
     Q_ENUM(Type)
 };
 
-enum class SnapType {
-    Bar,
+enum class SnapType : unsigned int {
+    Bar = 0,
 
     Half,
     Quarter,
@@ -104,6 +104,12 @@ enum class SnapType {
     CDDAFrames
 };
 
+struct Snap {
+    SnapType type = SnapType::Bar;
+    bool enabled = false;
+    bool isSnapTriplets = false;
+};
+
 enum class TimelineRulerMode {
     MINUTES_AND_SECONDS = 0,
     BEATS_AND_MEASURES
@@ -120,16 +126,54 @@ public:
     Q_ENUM(Style)
 };
 
-enum class Direction {
-    Left = 0,
-    Right
+class DirectionType
+{
+    Q_GADGET
+public:
+    enum class Direction {
+        Left = 0,
+        Right,
+        Auto
+    };
+    Q_ENUM(Direction);
+};
+
+class ClipBoundary
+{
+    Q_GADGET
+public:
+    enum class Action {
+        Shrink, // trim or time-stretch inward
+        Expand,  // untrim or time-stretch outward,
+        Auto
+    };
+    Q_ENUM(Action)
+};
+
+class StereoHeightsPref
+{
+    Q_GADGET
+public:
+    enum class AsymmetricStereoHeights {
+        ALWAYS = 0,
+        WORKSPACE_DEPENDENT,
+        NEVER
+    };
+    Q_ENUM(AsymmetricStereoHeights)
 };
 
 constexpr const char16_t* COLOR_CHANGE_ACTION = u"action://trackedit/clip/change-color?color=%1";
-inline muse::actions::ActionQuery makeColorChangeAction(const std::string& colorHex)
+inline muse::actions::ActionQuery makeClipColorChangeAction(const std::string& colorHex)
 {
     return muse::actions::ActionQuery(muse::String(COLOR_CHANGE_ACTION).arg(muse::String::fromStdString(
                                                                                 colorHex)));
+}
+
+constexpr const char16_t* TRACK_COLOR_CHANGE_ACTION = u"action://trackedit/track/change-color?color=%1";
+inline muse::actions::ActionQuery makeTrackColorChangeAction(const std::string& colorHex)
+{
+    return muse::actions::ActionQuery(muse::String(TRACK_COLOR_CHANGE_ACTION).arg(muse::String::fromStdString(
+                                                                                      colorHex)));
 }
 }
 

@@ -240,11 +240,11 @@
     </SC>
     <SC>
         <key>paste-insert</key>
-        <seq>Ctrl+Shift+V</seq>
+        <seq>Shift+V</seq>
     </SC>
     <SC>
         <key>paste-insert-all-tracks-ripple</key>
-        <seq>Ctrl+Alt+V</seq>
+        <seq>Ctrl+Shift+V</seq>
     </SC>
     <SC>
         <key>duplicate</key>
@@ -861,6 +861,10 @@
         <seq>Shift+Space</seq>
     </SC>
     <SC>
+        <key>stop-record</key>
+        <seq>Space</seq>
+    </SC>
+    <SC>
         <key>play-one-sec</key>
         <seq>1</seq>
     </SC>
@@ -1089,7 +1093,7 @@
         <seq>Ctrl+F2</seq>
     </SC>
     <SC>
-        <key>change-pitch-and-speed</key>
+        <key>clip-pitch-speed-open</key>
         <seq>Ctrl+Shift+P</seq>
     </SC>
     <SC>

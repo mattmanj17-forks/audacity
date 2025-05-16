@@ -19,8 +19,8 @@
 
 #include "view/common/tracksviewstatemodel.h"
 #include "view/common/customcursor.h"
-#include "view/common/insertsilencemodel.h"
 
+#include "view/toolbars/audiosetupcontextmenumodel.h"
 #include "view/toolbars/projecttoolbarmodel.h"
 #include "view/toolbars/undoredotoolbarmodel.h"
 #include "view/toolbars/workspacestoolbarmodel.h"
@@ -121,16 +121,19 @@ void ProjectSceneModule::registerUiTypes()
     qmlRegisterUncreatableType<TrackTypes>("Audacity.ProjectScene", 1, 0, "TrackType", "Not creatable from QML");
     qmlRegisterUncreatableType<ClipKey>("Audacity.ProjectScene", 1, 0, "ClipKey", "Not creatable from QML");
     qmlRegisterUncreatableType<ClipStyles>("Audacity.ProjectScene", 1, 0, "ClipStyle", "Not creatable from QML");
+    qmlRegisterUncreatableType<StereoHeightsPref>("Audacity.ProjectScene", 1, 0, "AsymmetricStereoHeights", "Not creatable from QML");
+    qmlRegisterUncreatableType<ClipBoundary>("Audacity.ProjectScene", 1, 0, "ClipBoundaryAction", "Not creatable from QML");
+    qmlRegisterUncreatableType<DirectionType>("Audacity.ProjectScene", 1, 0, "Direction", "Not creatable from QML");
 
     // common
     qmlRegisterType<TracksViewStateModel>("Audacity.ProjectScene", 1, 0, "TracksViewStateModel");
     qmlRegisterType<CustomCursor>("Audacity.ProjectScene", 1, 0, "CustomCursor");
-    qmlRegisterType<InsertSilenceModel>("Audacity.ProjectScene", 1, 0, "InsertSilenceModel");
 
     // toolbars
     qmlRegisterType<ProjectToolBarModel>("Audacity.ProjectScene", 1, 0, "ProjectToolBarModel");
     qmlRegisterType<UndoRedoToolBarModel>("Audacity.ProjectScene", 1, 0, "UndoRedoToolBarModel");
     qmlRegisterType<WorkspacesToolBarModel>("Audacity.ProjectScene", 1, 0, "WorkspacesToolBarModel");
+    qmlRegisterType<AudioSetupContextMenuModel>("Audacity.ProjectScene", 1, 0, "AudioSetupContextMenuModel");
 
     qmlRegisterType<PlaybackToolBarModel>("Audacity.ProjectScene", 1, 0, "PlaybackToolBarModel");
     qmlRegisterType<PlaybackToolBarCustomiseModel>("Audacity.ProjectScene", 1, 0, "PlaybackToolBarCustomiseModel");

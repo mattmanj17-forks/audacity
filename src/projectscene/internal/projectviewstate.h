@@ -9,6 +9,7 @@
 #include "context/iglobalcontext.h"
 #include "modularity/ioc.h"
 #include "async/asyncable.h"
+#include "au3wrap/iau3project.h"
 
 namespace au::projectscene {
 class ProjectViewState : public QObject, public IProjectViewState, public muse::async::Asyncable
@@ -19,7 +20,7 @@ class ProjectViewState : public QObject, public IProjectViewState, public muse::
     muse::Inject<IProjectSceneConfiguration> configuration;
 
 public:
-    ProjectViewState();
+    ProjectViewState(std::shared_ptr<au::au3::IAu3Project> project);
 
     // State of elements
     muse::ValCh<int> trackHeight(const trackedit::TrackId& trackId) const override;
@@ -51,10 +52,19 @@ public:
     void changeTrackHeight(const trackedit::TrackId& trackId, int deltaY) override;
 
     void setClipEditStartTimeOffset(double val) override;
-    double clipEditStartTimeOffset() override;
+    double clipEditStartTimeOffset() const override;
 
     void setClipEditEndTimeOffset(double val) override;
-    double clipEditEndTimeOffset() override;
+    double clipEditEndTimeOffset() const override;
+
+    void setMoveInitiated(bool val) override;
+    bool moveInitiated() const override;
+
+    void setLastEditedClip(const trackedit::ClipKey& clipKey) override;
+    trackedit::ClipKey lastEditedClip() const override;
+
+    void setClipsBoundaries(const std::set<muse::secs_t>& boundaries) override;
+    std::set<muse::secs_t> clipsBoundaries() const override;
 
     muse::ValCh<bool> altPressed() const override;
     muse::ValCh<bool> ctrlPressed() const override;
@@ -80,6 +90,15 @@ private:
     //! Offset between mouse click position on clip's header and clip's start and end time
     double m_clipEditStartTimeOffset = -1.0;
     double m_clipEditEndTimeOffset = -1.0;
+
+    //! User needs to drag a mouse by a certain amount of pixels (left or right) or
+    //! move to the other track for move to be initiated
+    bool m_moveInitiated = false;
+
+    trackedit::ClipKey m_lastEditedClip = trackedit::ClipKey{};
+
+    //! clips start/end times the currently moved/trimmed/stretched clip can snap to
+    std::set<muse::secs_t> m_clipsBoundaries;
 
     muse::ValCh<bool> m_altPressed;
     muse::ValCh<bool> m_ctrlPressed;

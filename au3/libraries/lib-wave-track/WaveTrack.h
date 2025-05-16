@@ -488,6 +488,12 @@ public:
     const ChannelGroup* FindChannelGroup() const override;
     bool GetMute() const override;
     bool GetSolo() const override;
+
+    int64_t GetRecordableSequenceId() const override
+    {
+        return GetId();
+    }
+
     //! @}
 
     ///
@@ -593,6 +599,8 @@ public:
     @pre t0 <= t1
     */
     IntervalConstHolders GetSortedClipsIntersecting(double t0, double t1) const;
+    IntervalConstHolder GetClipAtTime(double time) const;
+    IntervalConstHolder GetSortedClipByIndex(size_t index) const;
 
 private:
     void CopyWholeClip(
@@ -603,7 +611,6 @@ private:
 
     //! Return all WaveClips sorted by clip play start time.
     IntervalConstHolders SortedClipArray() const;
-    IntervalConstHolder GetClipAtTime(double time) const;
 
     void CreateRight();
 

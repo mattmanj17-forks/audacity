@@ -17,8 +17,7 @@ set( SOURCES
    DeviceChange.h
    DeviceManager.cpp
    DeviceManager.h
-   Meter.cpp
-   Meter.h
+   IMeterSender.h
 )
 set( LIBRARIES
    portaudio::portaudio

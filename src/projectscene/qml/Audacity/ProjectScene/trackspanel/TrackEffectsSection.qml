@@ -15,15 +15,20 @@ Rectangle {
     id: root
 
     property alias isMasterTrack: effectList.isMasterTrack
+    property alias minimumHeight: prv.addEffectButtonHeight
 
-    enabled: effectList.trackName !== ""
+    property NavigationSection navigationSection: null
+
     color: ui.theme.backgroundPrimaryColor
 
-    readonly property int addEffectButtonHeight: 24
-    readonly property int addEffectButtonMargin: 12
-    readonly property int headerHeight: 40
-    readonly property int itemSpacing: 12
-    readonly property int minimumHeight: headerHeight + addEffectButtonHeight + 2 * addEffectButtonMargin + separator.height + !effectList.empty * effectList.topMargin
+    QtObject {
+        id: prv
+        property bool enabled: effectList.trackName !== ""
+        readonly property int addEffectButtonHeight: 24
+        readonly property int addEffectButtonMargin: 12
+        readonly property int headerHeight: 40
+        readonly property int itemSpacing: 12
+    }
 
     ColumnLayout {
         id: trackEffects
@@ -35,7 +40,8 @@ Rectangle {
         RowLayout {
             id: trackEffectsHeader
 
-            spacing: itemSpacing
+            spacing: prv.itemSpacing
+            enabled: prv.enabled
 
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignHCenter | Qt.AlignVTop
@@ -43,12 +49,20 @@ Rectangle {
             BypassEffectButton {
                 id: trackEffectsPowerButton
 
+                property NavigationPanel navigationPanel: NavigationPanel {
+                    name: (isMasterTrack ? "Master" : effectList.trackName) + " effects bypass"
+                    enabled: root.enabled && root.visible
+                    section: root.navigationSection
+                    order: 0
+                }
+
+                navigation.panel: trackEffectsPowerButton.navigationPanel
+
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignLeft
                 Layout.margins: 8
-                Layout.preferredWidth: headerHeight - Layout.margins * 2
+                Layout.preferredWidth: prv.headerHeight - Layout.margins * 2
                 Layout.preferredHeight: Layout.preferredWidth
 
-                enabled: root.enabled
                 accentButton: effectList.trackEffectsActive
                 isMasterEffect: root.isMasterTrack
 
@@ -60,27 +74,31 @@ Rectangle {
 
             StyledTextLabel {
                 id: trackNameLabel
-                text: root.enabled ? effectList.trackName : ""
+                enabled: prv.enabled
+                text: prv.enabled ? effectList.trackName : ""
                 Layout.fillWidth: true
-                Layout.preferredHeight: headerHeight
-                Layout.maximumWidth: root.width - trackEffectsPowerButton.width - 2 * itemSpacing
+                Layout.preferredHeight: prv.headerHeight
+                Layout.maximumWidth: root.width - trackEffectsPowerButton.width - 2 * prv.itemSpacing
                 horizontalAlignment: Text.AlignLeft
             }
         }
 
         SeparatorLine {
             id: separator
+            enabled: prv.enabled
         }
 
         Rectangle {
             id: effectListContainer
-            visible: root.enabled
+            visible: prv.enabled
             color: ui.theme.backgroundSecondaryColor
-            Layout.preferredHeight: !effectList.empty * Math.min(effectList.implicitHeight, root.height - addEffectButtonHeight - 2 * addEffectButtonMargin - headerHeight - separator.height)
+            Layout.preferredHeight: !effectList.empty * Math.min(effectList.implicitHeight, root.height - prv.addEffectButtonHeight - 2 * prv.addEffectButtonMargin - prv.headerHeight - separator.height)
             Layout.alignment: Qt.AlignHCenter | Qt.AlignVTop
             Layout.fillWidth: true
             TrackEffectList {
                 id: effectList
+                navigationSection: root.navigationSection
+                navigationPanelOrderOffset: 1
                 color: "transparent"
                 anchors.fill: parent
                 anchors.leftMargin: 4
@@ -91,16 +109,26 @@ Rectangle {
         }
 
         SeparatorLine {
-            visible: root.enabled && !effectList.empty
+            visible: prv.enabled && !effectList.empty
         }
 
         FlatButton {
             id: addEffectButton
+            enabled: prv.enabled
             Layout.fillWidth: true
-            Layout.minimumHeight: addEffectButtonHeight
-            Layout.maximumHeight: addEffectButtonHeight
-            Layout.margins: addEffectButtonMargin
+            Layout.minimumHeight: prv.addEffectButtonHeight
+            Layout.maximumHeight: prv.addEffectButtonHeight
+            Layout.margins: prv.addEffectButtonMargin
             Layout.alignment: Qt.AlignHCenter | Qt.AlignVTop
+
+            property NavigationPanel navigationPanel: NavigationPanel {
+                name: (isMasterTrack ? "Master" : effectList.trackName) + " add effect"
+                enabled: root.enabled && root.visible
+                section: root.navigationSection
+                order: effectList.navigationPanelOrderOffset + effectList.count + 1
+            }
+
+            navigation.panel: addEffectButton.navigationPanel
 
             text: qsTrc("projectscene", "Add effect")
 
@@ -121,6 +149,29 @@ Rectangle {
                     menuModel.handleMenuItem(itemId)
                 }
             }
+        }
+
+        StyledTextLabel {
+            id: infoText
+            visible: !isMasterTrack && effectList.empty
+            text: {
+                {
+                    const line1 = qsTrc("projectscene", "Realtime effects are non-destructive and can be changed at any time.")
+                    const line2 = qsTrc("projectscene", "<a href=\"https://www.audacityteam.org/realtime-video\">Watch video</a>")
+                    return line1 + "<br/><div style='line-height:30px;'><br/></div>" + line2
+                }
+            }
+
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            wrapMode: Text.Wrap
+            font: ui.theme.bodyFont
+            color: ui.theme.fontPrimaryColor
+            leftPadding: 16
+            rightPadding: 16
+            elide: Text.ElideNone
+            verticalAlignment: Text.AlignTop
+            horizontalAlignment: Text.AlignLeft
         }
     }
 }

@@ -17,7 +17,6 @@ Paul Licameli split from AudioIO.cpp
 #include <wx/txtstrm.h>
 
 #include "IteratorX.h"
-#include "Meter.h"
 #include "Prefs.h"
 
 #include "portaudio.h"
@@ -293,8 +292,23 @@ void AudioIOBase::HandleDeviceChange()
 #endif   // USE_PORTMIXER
 }
 
+int AudioIOBase::GetHostIndex(const std::string& hostName)
+{
+    int index = -1;
+    int nHosts = Pa_GetHostApiCount();
+    for (int i = 0; i < nHosts; ++i) {
+        wxString name = wxSafeConvertMB2WX(Pa_GetHostApiInfo(i)->name);
+        if (name == hostName) {
+            index = i;
+            break;
+        }
+    }
+
+    return index;
+}
+
 void AudioIOBase::SetCaptureMeter(
-    const std::shared_ptr<AudacityProject>& project, const std::weak_ptr<Meter>& wMeter)
+    const std::shared_ptr<AudacityProject>& project, const std::weak_ptr<IMeterSender>& wMeter)
 {
     if (auto pOwningProject = mOwningProject.lock();
         (pOwningProject) && (pOwningProject != project)) {
@@ -304,14 +318,14 @@ void AudioIOBase::SetCaptureMeter(
     auto meter = wMeter.lock();
     if (meter) {
         mInputMeter = meter;
-        meter->Reset(mRate, true);
+        meter->reset();
     } else {
         mInputMeter.reset();
     }
 }
 
 void AudioIOBase::SetPlaybackMeter(
-    const std::shared_ptr<AudacityProject>& project, const std::weak_ptr<Meter>& wMeter)
+    const std::shared_ptr<AudacityProject>& project, const std::weak_ptr<IMeterSender>& wMeter)
 {
     if (auto pOwningProject = mOwningProject.lock();
         (pOwningProject) && (pOwningProject != project)) {
@@ -321,7 +335,7 @@ void AudioIOBase::SetPlaybackMeter(
     auto meter = wMeter.lock();
     if (meter) {
         mOutputMeter = meter;
-        meter->Reset(mRate, true);
+        meter->reset();
     } else {
         mOutputMeter.reset();
     }

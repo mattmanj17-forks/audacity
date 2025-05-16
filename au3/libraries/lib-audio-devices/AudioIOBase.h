@@ -21,6 +21,7 @@ Paul Licameli split from AudioIO.h
 #include <utility>
 #include <wx/string.h>
 #include "MemoryX.h"
+#include "IMeterSender.h"
 
 struct PaDeviceInfo;
 typedef void PaStream;
@@ -53,7 +54,8 @@ struct AudioIOStartStreamOptions
     {}
 
     std::shared_ptr<AudacityProject> pProject;
-    std::weak_ptr<Meter> captureMeter, playbackMeter;
+    std::weak_ptr<IMeterSender> captureMeter;
+    std::weak_ptr<IMeterSender> playbackMeter;
     const BoundedEnvelope* envelope{}; // for time warping
     std::shared_ptr< AudioIOListener > listener;
     double rate;
@@ -111,9 +113,9 @@ public:
     AudioIOBase& operator=(const AudioIOBase&) = delete;
 
     void SetCaptureMeter(
-        const std::shared_ptr<AudacityProject>& project, const std::weak_ptr<Meter>& meter);
+        const std::shared_ptr<AudacityProject>& project, const std::weak_ptr<IMeterSender>& meter);
     void SetPlaybackMeter(
-        const std::shared_ptr<AudacityProject>& project, const std::weak_ptr<Meter>& meter);
+        const std::shared_ptr<AudacityProject>& project, const std::weak_ptr<IMeterSender>& meter);
 
     /** \brief update state after changing what audio devices are selected
      *
@@ -124,6 +126,8 @@ public:
      * AudioIO object to avoid doing it later? Would simplify the
      * GetSupported*Rate functions considerably */
     void HandleDeviceChange();
+
+    static int GetHostIndex(const std::string& hostName);
 
     /** \brief Get a list of sample rates the output (playback) device
      * supports.
@@ -312,8 +316,8 @@ protected:
 
     PaStream* mPortStreamV19;
 
-    std::weak_ptr<Meter> mInputMeter{};
-    std::weak_ptr<Meter> mOutputMeter{};
+    std::weak_ptr<IMeterSender> mInputMeter{};
+    std::weak_ptr<IMeterSender> mOutputMeter{};
 
    #if USE_PORTMIXER
     PxMixer* mPortMixer;
