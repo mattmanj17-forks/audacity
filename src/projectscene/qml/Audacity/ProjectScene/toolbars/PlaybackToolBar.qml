@@ -28,6 +28,8 @@ Item {
     }
     height: view.height
 
+    signal relayoutRequested()
+
     QtObject {
         id: prv
 
@@ -39,11 +41,18 @@ Item {
 
         anchors.verticalCenter: parent.verticalCenter
 
-        rowHeight: 48
+        rowHeight: isMultiline ? 32 : 48
+        topPadding: isMultiline ? 8 : 0
+        bottomPadding: isMultiline ? 8 : 0
+
         separatorHeight: 28
         maximumWidth: root.maximumWidth - prv.customizeButtonSpaceWidth
 
-        model: PlaybackToolBarModel {}
+        model: PlaybackToolBarModel {
+            onItemsChanged: {
+                root.relayoutRequested()
+            }
+        }
 
         sourceComponentCallback: function(type) {
             switch(type) {
@@ -248,9 +257,9 @@ Item {
         id: customizeButton
 
         anchors.right: parent.right
-        anchors.rightMargin: 12
+        anchors.rightMargin: 8
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 12
+        anchors.bottomMargin: 8
 
         width: 28
         height: width

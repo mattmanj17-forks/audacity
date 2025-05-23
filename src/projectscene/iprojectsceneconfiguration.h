@@ -20,12 +20,6 @@ public:
 
     virtual double zoom() const = 0;
 
-    virtual trackedit::secs_t insertSilenceDuration() const = 0;
-    virtual void setInsertSilenceDuration(const trackedit::secs_t duration) = 0;
-
-    virtual std::string insertSilenceDurationFormat() const = 0;
-    virtual void setInsertSilenceDurationFormat(const std::string& format) = 0;
-
     virtual int mouseZoomPrecision() const = 0;
     virtual void setMouseZoomPrecision(int precision) = 0;
     virtual TimelineRulerMode timelineRulerMode() const = 0;
@@ -41,5 +35,13 @@ public:
     virtual ClipStyles::Style clipStyle() const = 0;
     virtual void setClipStyle(ClipStyles::Style style) = 0;
     virtual muse::async::Channel<ClipStyles::Style> clipStyleChanged() const = 0;
+
+    virtual StereoHeightsPref::AsymmetricStereoHeights stereoHeightsPref() const = 0;
+    virtual void setStereoHeightsPref(StereoHeightsPref::AsymmetricStereoHeights pref) = 0;
+    virtual muse::async::Notification stereoHeightsPrefChanged() const = 0;
+
+    virtual std::vector<std::string> asymmetricStereoHeightsWorkspaces() const = 0;
+    virtual void setAsymmetricStereoHeightsWorkspaces(std::vector<std::string>& workspaces) = 0;
+    virtual muse::async::Notification asymmetricStereoHeightsWorkspacesChanged() const = 0;
 };
 }

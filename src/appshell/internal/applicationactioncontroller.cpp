@@ -61,6 +61,8 @@ void ApplicationActionController::init()
     dispatcher()->reg(this, "preference-dialog", this, &ApplicationActionController::openPreferencesDialog);
 
     dispatcher()->reg(this, "revert-factory", this, &ApplicationActionController::revertToFactorySettings);
+
+    dispatcher()->reg(this, "audio-settings", this, &ApplicationActionController::openAudioSettingsDialog);
 }
 
 const std::vector<muse::actions::ActionCode>& ApplicationActionController::prohibitedActionsWhileRecording() const
@@ -241,6 +243,14 @@ void ApplicationActionController::openPreferencesDialog()
     interactive()->open("audacity://preferences");
 }
 
+void ApplicationActionController::openAudioSettingsDialog()
+{
+    muse::UriQuery preferencesUri("audacity://preferences");
+    preferencesUri.addParam("currentPageId", muse::Val("audio-settings"));
+
+    interactive()->open(preferencesUri);
+}
+
 void ApplicationActionController::revertToFactorySettings()
 {
     std::string title = muse::trc("appshell", "Are you sure you want to revert to factory settings?");
@@ -250,11 +260,12 @@ void ApplicationActionController::revertToFactorySettings()
                                      "This action will not delete any of your scores.");
 
     int revertBtn = int(muse::IInteractive::Button::Apply);
-    muse::IInteractive::Result result = interactive()->warning(title, question,
-                                                               { interactive()->buttonData(muse::IInteractive::Button::Cancel),
-                                                                 muse::IInteractive::ButtonData(revertBtn, muse::trc("appshell", "Revert"),
-                                                                                                true) },
-                                                               revertBtn);
+    muse::IInteractive::Result result = interactive()->warningSync(title, question,
+                                                                   { interactive()->buttonData(muse::IInteractive::Button::Cancel),
+                                                                     muse::IInteractive::ButtonData(revertBtn,
+                                                                                                    muse::trc("appshell", "Revert"),
+                                                                                                    true) },
+                                                                   revertBtn);
 
     if (result.standardButton() == muse::IInteractive::Button::Cancel) {
         return;
@@ -268,10 +279,10 @@ void ApplicationActionController::revertToFactorySettings()
     question = muse::trc("appshell", "Audacity needs to be restarted for these changes to take effect.");
 
     int restartBtn = int(muse::IInteractive::Button::Apply);
-    result = interactive()->question(title, question,
-                                     { interactive()->buttonData(muse::IInteractive::Button::Cancel),
-                                       muse::IInteractive::ButtonData(restartBtn, muse::trc("appshell", "Restart"), true) },
-                                     restartBtn);
+    result = interactive()->questionSync(title, question,
+                                         { interactive()->buttonData(muse::IInteractive::Button::Cancel),
+                                           muse::IInteractive::ButtonData(restartBtn, muse::trc("appshell", "Restart"), true) },
+                                         restartBtn);
 
     if (result.standardButton() == muse::IInteractive::Button::Cancel) {
         return;

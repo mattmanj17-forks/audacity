@@ -36,9 +36,8 @@ public:
     EffectMetaList effectMetaList() const override;
     muse::async::Notification effectMetaListChanged() const override;
 
-    EffectCategoryList effectsCategoryList() const override;
-
     EffectMeta meta(const EffectId& effectId) const override;
+    bool loadEffect(const EffectId& effectId) const override;
     std::string effectName(const std::string& effectId) const override;
     std::string effectName(const effects::RealtimeEffectState& state) const override;
     std::string effectSymbol(const std::string& effectId) const override;
@@ -50,7 +49,6 @@ public:
 
     void showEffect(const RealtimeEffectStatePtr& state) const override;
     void hideEffect(const RealtimeEffectStatePtr& state) const override;
-    void toggleShowEffect(const RealtimeEffectStatePtr& state) const override;
 
     muse::Ret performEffect(au3::Au3Project& project, Effect* effect, std::shared_ptr<EffectInstance> effectInstance,
                             EffectSettings& settings) override;
@@ -66,7 +64,5 @@ private:
 
     mutable EffectMetaList m_effects;
     muse::async::Notification m_effectsChanged;
-
-    mutable EffectCategoryList m_effectsCategories;
 };
 }

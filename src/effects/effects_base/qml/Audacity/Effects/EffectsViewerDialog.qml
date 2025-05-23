@@ -7,81 +7,142 @@ import QtQuick.Layouts
 import Muse.Ui
 import Muse.UiComponents
 
-StyledDialogView {
+import Audacity.Effects
+import Audacity.Vst
+
+EffectStyledDialogView {
     id: root
 
-    property alias type: viewer.type
-    property alias instanceId: viewer.instanceId
+    property var instanceId
+    property bool isVst: false
 
-    title: viewer.title
-
-    contentWidth: Math.max(viewer.implicitWidth, bbox.implicitWidth)
-    contentHeight: viewer.implicitHeight + bbox.implicitHeight + 16
-
-    margins: 16
-
-    EffectsViewer {
-        id: viewer
-        width: parent.width
-
-        onIsApplyAllowedChanged: {
-            bbox.buttonById(ButtonBoxModel.Apply).enabled = isApplyAllowed
-            bbox.buttonById(previewBtn.buttonId).enabled = isApplyAllowed
-        }
+    QtObject {
+        id: prv
+        property alias viewer: viewerLoader.item
+        property bool isApplyAllowed: isVst || (viewer && viewer.isApplyAllowed)
+        property int separatorHeight: isVst ? 0 : separator.height + root.margins
     }
 
-    ButtonBox {
-        id: bbox
-        width: parent.width
-        anchors.bottom: parent.bottom
+    title: prv.viewer ? prv.viewer.title : ""
 
-        //! TODO Move function to ButtonBox (Muse framework)
-        function buttonById(id) {
-            for (var i = 0; i < bbox.count; i++) {
-                var btn = bbox.itemAt(i)
-                if (btn.buttonId === id) {
-                    return btn
+    minimumWidth: 250
+    implicitWidth: viewerLoader.width
+    implicitHeight: presetsBar.height + viewerLoader.height + btnBarLoader.height + margins * 2 + prv.separatorHeight
+
+    margins: isVst ? 4 : 16
+
+    onWindowChanged: {
+        // Wait until the window is set: VstView needs it for intialization
+        viewerLoader.sourceComponent = isVst ? vstViewerComp : builtinViewerComp
+    }
+
+    Component.onCompleted: {
+        // Delay loading of ButtonBox because it needs to know the final width before executing its layout
+        // (which it only does once)
+        btnBarLoader.sourceComponent = bboxComponent
+    }
+
+    Column {
+        id: column
+        anchors.fill: parent
+
+        spacing: root.margins
+
+        EffectPresetsBar {
+            id: presetsBar
+            navigationPanel: root.navigationPanel
+            navigationOrder: 0
+            instanceId: root.instanceId
+            anchors.left: parent.left
+            anchors.right: parent.right
+        }
+
+        SeparatorLine {
+            id: separator
+            visible: !isVst
+        }
+
+        Component {
+            id: builtinViewerComp
+            EffectsViewer {
+                instanceId: root.instanceId
+            }
+        }
+
+        Component {
+            id: vstViewerComp
+            VstViewer {
+                instanceId: root.instanceId
+                height: implicitHeight
+                topPadding: root.margins * 2 + presetsBar.height + prv.separatorHeight
+                bottomPadding: btnBarLoader.implicitHeight + 2 * root.margins
+                sidePadding: root.margins
+                minimumWidth: root.minimumWidth
+            }
+        }
+
+        Loader {
+            id: viewerLoader
+        }
+
+        Component {
+            id: bboxComponent
+            ButtonBox {
+                id: bbox
+
+                width: root.contentWidth
+                spacing: root.margins
+
+                //! TODO Move function to ButtonBox (Muse framework)
+                function buttonById(id) {
+                    for (var i = 0; i < bbox.count; i++) {
+                        var btn = bbox.itemAt(i)
+                        if (btn.buttonId === id) {
+                            return btn
+                        }
+                    }
+
+                    return null
+                }
+
+                FlatButton {
+                    id: previewBtn
+                    text: qsTrc("effects", "Preview")
+                    buttonRole: ButtonBoxModel.CustomRole
+                    buttonId: ButtonBoxModel.CustomButton + 2
+                    isLeftSide: true
+                    minWidth: 80
+                    onClicked: prv.viewer.preview()
+                    enabled: prv.isApplyAllowed
+                    height: presetsBar.height
+                }
+
+                FlatButton {
+                    id: cancelBtn
+                    text: qsTrc("global", "Cancel")
+                    buttonRole: ButtonBoxModel.RejectRole
+                    buttonId: ButtonBoxModel.Cancel
+                    minWidth: 80
+                    onClicked: root.reject()
+                    height: presetsBar.height
+                }
+
+                FlatButton {
+                    id: okBtn
+                    text: qsTrc("global", "Apply")
+                    buttonRole: ButtonBoxModel.AcceptRole
+                    buttonId: ButtonBoxModel.Apply
+                    minWidth: 80
+                    accentButton: true
+                    onClicked: root.accept()
+                    enabled: prv.isApplyAllowed
+                    height: presetsBar.height
                 }
             }
-
-            return null
         }
 
-        Component.onCompleted: {
-            bbox.buttonById(ButtonBoxModel.Apply).enabled = false
-        }
-
-        FlatButton {
-            id: manageBtn
-            text: qsTrc("effects", "Manage")
-            buttonRole: ButtonBoxModel.CustomRole
-            buttonId: ButtonBoxModel.CustomButton + 1
-            isLeftSide: true
-            onClicked: viewer.manage(manageBtn)
-        }
-
-        FlatButton {
-            id: previewBtn
-            text: qsTrc("effects", "Preview")
-            buttonRole: ButtonBoxModel.CustomRole
-            buttonId: ButtonBoxModel.CustomButton + 2
-            isLeftSide: true
-            onClicked: viewer.preview()
-        }
-
-        FlatButton {
-            text: qsTrc("global", "Cancel")
-            buttonRole: ButtonBoxModel.RejectRole
-            buttonId: ButtonBoxModel.Cancel
-            onClicked: root.reject()
-        }
-
-        FlatButton {
-            text: qsTrc("global", "Apply")
-            buttonRole: ButtonBoxModel.AcceptRole
-            buttonId: ButtonBoxModel.Apply
-            accentButton: true
-            onClicked: root.accept()
+        Loader {
+            id: btnBarLoader
         }
     }
 }

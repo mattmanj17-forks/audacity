@@ -20,6 +20,8 @@ static constexpr double SCROLL_MARGIN_PX = 40.0;
 static constexpr double SCROLL_MIN_SPEED = 0.00001;
 static constexpr double SCROLL_MAX_SPEED = 0.025;
 
+static constexpr int SNAP_TO_CLIP_TOLERANCE_PX = 4;
+
 using namespace au::projectscene;
 
 namespace {
@@ -50,16 +52,23 @@ TimelineContext::TimelineContext(QObject* parent)
 
 void TimelineContext::init(double frameWidth)
 {
-    double initialTimeRange = trackEditProject() ? trackEditProject()->totalTime().to_double() * 2 : 0.0;
-    if (muse::is_zero(initialTimeRange)) {
-        m_zoom = configuration()->zoom();
+    auto vs = this->viewState();
+    ZoomState zoomState = vs->zoomState();
+
+    if (!muse::RealIsEqual(zoomState.zoom, 0.0)) {
+        m_zoom = zoomState.zoom;
     } else {
-        m_zoom = m_frameWidth / initialTimeRange;
+        double initialTimeRange = trackEditProject() ? trackEditProject()->totalTime().to_double() * 2 : 0.0;
+        if (muse::is_zero(initialTimeRange)) {
+            m_zoom = configuration()->zoom();
+        } else {
+            m_zoom = m_frameWidth / initialTimeRange;
+        }
     }
     emit zoomChanged();
 
     m_frameWidth = frameWidth;
-    m_frameStartTime = 0.0;
+    m_frameStartTime = zoomState.frameStart;
     emit frameStartTimeChanged();
     m_frameEndTime = positionToTime(frameWidth);
 
@@ -537,6 +546,24 @@ double TimelineContext::applySnapToTime(double time) const
     return m_snapTimeFormatter->snapTime(time, viewState->snap().val, timeSig);
 }
 
+double TimelineContext::applySnapToClip(double time) const
+{
+    auto viewState = this->viewState();
+    if (!viewState || viewState->isSnapEnabled()) {
+        return time;
+    }
+
+    auto project = globalContext()->currentTrackeditProject();
+    if (!project) {
+        return time;
+    }
+
+    muse::secs_t tolerance = SNAP_TO_CLIP_TOLERANCE_PX / zoom();
+    std::set<muse::secs_t> clipsBoundaries = viewState->clipsBoundaries();
+
+    return m_snapTimeFormatter->snapToClip(time, tolerance, clipsBoundaries);
+}
+
 void TimelineContext::updateMousePositionTime(double mouseX)
 {
     m_mousePositionTime = positionToTime(mouseX);
@@ -584,6 +611,8 @@ void TimelineContext::setZoom(double zoom, double mouseX)
 
     emit verticalScrollChanged();
     emit frameTimeChanged();
+
+    saveViewState();
 }
 
 int TimelineContext::BPM() const
@@ -638,6 +667,8 @@ void TimelineContext::setFrameStartTime(double newFrameStartTime)
     m_frameStartTime = newFrameStartTime;
 
     emit frameStartTimeChanged();
+
+    saveViewState();
 }
 
 double TimelineContext::frameEndTime() const
@@ -820,6 +851,16 @@ qreal TimelineContext::verticalScrollableSize() const
 double TimelineContext::timeToContentPosition(double time) const
 {
     return std::floor(0.5 + m_zoom * time);
+}
+
+void TimelineContext::saveViewState() const
+{
+    auto vs = this->viewState();
+    ZoomState state = {
+        m_zoom, m_frameStartTime, vs->tracksVericalY().val
+    };
+
+    vs->setZoomState(state);
 }
 
 qreal TimelineContext::startHorizontalScrollPosition() const

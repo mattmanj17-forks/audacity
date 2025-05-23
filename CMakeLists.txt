@@ -24,7 +24,7 @@ include(FetchContent)
 FetchContent_Declare(
   muse_framework
   GIT_REPOSITORY https://github.com/musescore/framework_tmp.git
-  GIT_TAG        u250317
+  GIT_TAG        u250522
 )
 
 FetchContent_GetProperties(muse_framework)
@@ -161,7 +161,7 @@ endif(MUE_COMPILE_USE_CCACHE)
 # Setup external dependencies
 ###########################################
 set(QT_MIN_VERSION "6.2.4")
-include(FindQt6)
+include(SetupQt6)
 
 ###########################################
 # Add source tree

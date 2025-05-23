@@ -30,8 +30,8 @@ FirstLaunchSetupModel::FirstLaunchSetupModel(QObject* parent)
     : QObject(parent)
 {
     m_pages = {
+        Page { "UnderConstructionPage.qml", "audacity://project" },
         Page { "ThemesPage.qml", "audacity://project" },
-        Page { "PlaybackPage.qml", "audacity://project" },
         Page { "TutorialsPage.qml", "musescore://home?section=learn" }
     };
 }
@@ -102,11 +102,11 @@ bool FirstLaunchSetupModel::askAboutClosingEarly()
     };
 
     IInteractive::Result result
-        = interactive()->warning(trc("appshell/gettingstarted", "Are you sure you want to cancel?"),
-                                 trc("appshell/gettingstarted", "If you choose to cancel, then be sure to check out "
-                                                                "our free Muse Sounds playback library on musescore.org."),
-                                 buttons,
-                                 int(IInteractive::Button::Cancel));
+        = interactive()->warningSync(trc("appshell/gettingstarted", "Are you sure you want to cancel?"),
+                                     trc("appshell/gettingstarted", "If you choose to cancel, then be sure to check out "
+                                                                    "our free Muse Sounds playback library on musescore.org."),
+                                     buttons,
+                                     int(IInteractive::Button::Cancel));
 
     return result.standardButton() == IInteractive::Button::Cancel;
 }

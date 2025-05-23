@@ -24,6 +24,8 @@
 #include "tonegen/toneviewmodel.h"
 #include "dtmfgen/dtmfgenerator.h"
 #include "dtmfgen/dtmfviewmodel.h"
+#include "silencegen/silencegenerator.h"
+#include "silencegen/silenceviewmodel.h"
 #include "noisegen/noisegenerator.h"
 #include "noisegen/noiseviewmodel.h"
 #include "fade/fadeeffect.h"
@@ -36,6 +38,56 @@
 
 using namespace au::effects;
 
+namespace {
+enum class EffectCategoryId {
+    None,
+    VolumeAndCompression,
+    Fading,
+    PitchAndTempo,
+    EqAndFilters,
+    NoiseRemovalAndRepair,
+    DelayAndReverb,
+    DistortionAndModulation,
+    Special,
+    Legacy,
+};
+
+muse::String categoryIdString(EffectCategoryId category)
+{
+    switch (category) {
+    case EffectCategoryId::None:
+        // Maybe a temporary solution to generator menu organization:
+        // since generators don't have a category, with this they'll end up in the Audacity "category".
+        // When we implement Nyquist support, though, either we create the
+        // "Nyquist" category and are happy with that, or we
+        // will have to ask our designers to specify organization of generators
+        // (and analyzers).
+        return muse::String{ "Audacity" };
+    case EffectCategoryId::VolumeAndCompression:
+        return muse::String{ "Volume and Compression" };
+    case EffectCategoryId::Fading:
+        return muse::String{ "Fading" };
+    case EffectCategoryId::PitchAndTempo:
+        return muse::String{ "Pitch and Tempo" };
+    case EffectCategoryId::EqAndFilters:
+        return muse::String{ "EQ and Filters" };
+    case EffectCategoryId::NoiseRemovalAndRepair:
+        return muse::String{ "Noise Removal and Repair" };
+    case EffectCategoryId::DelayAndReverb:
+        return muse::String{ "Delay and Reverb" };
+    case EffectCategoryId::DistortionAndModulation:
+        return muse::String{ "Distortion and Modulation" };
+    case EffectCategoryId::Special:
+        return muse::String{ "Special" };
+    case EffectCategoryId::Legacy:
+        return muse::String{ "Legacy" };
+    default:
+        assert(false);
+        return muse::String{ "" };
+    }
+}
+} // namespace
+
 void BuiltinEffectsRepository::preInit()
 {
     static BuiltinEffectsModule::Registration< FadeInEffect > regFadeIn;
@@ -47,6 +99,7 @@ void BuiltinEffectsRepository::preInit()
     static BuiltinEffectsModule::Registration< ChirpEffect > regChirp;
     static BuiltinEffectsModule::Registration< ToneEffect > regTone;
     static BuiltinEffectsModule::Registration< ReverbEffect > regReverb;
+    static BuiltinEffectsModule::Registration< SilenceGenerator > regSilence;
     static BuiltinEffectsModule::Registration< NoiseGenerator > regNoise;
     static BuiltinEffectsModule::Registration< DtmfGenerator > regDtmf;
 }
@@ -66,15 +119,34 @@ void BuiltinEffectsRepository::updateEffectMetaList()
         effectsViewRegister()->regUrl(au3::wxToString(symbol.Internal()), url);
     };
 
-    auto regMeta = [this](const ::PluginDescriptor& desc, const muse::String& title, const muse::String& description,
-                          bool supportsMultipleClipSelection) {
+    auto regMeta
+        = [this](const ::PluginDescriptor& desc, const muse::String& title, const muse::String& description, EffectCategoryId category,
+                 bool supportsMultipleClipSelection) {
         EffectMeta meta;
         meta.id = au3::wxToString(desc.GetID());
-        meta.categoryId = BUILTIN_CATEGORY_ID;
+        meta.family = EffectFamily::Builtin;
+        meta.category = categoryIdString(category);
         meta.title = title;
         meta.description = description;
         meta.isRealtimeCapable = desc.IsEffectRealtime();
         meta.supportsMultipleClipSelection = supportsMultipleClipSelection;
+        meta.vendor = "Audacity";
+        meta.path = desc.GetPath();
+
+        switch (desc.GetEffectType()) {
+        case EffectTypeGenerate:
+            meta.type = EffectType::Generator;
+            break;
+        case EffectTypeProcess:
+            meta.type = EffectType::Processor;
+            break;
+        case EffectTypeAnalyze:
+            meta.type = EffectType::Analyzer;
+            break;
+        default:
+            assert(false);
+        }
+
         m_metas.insert({ desc.GetSymbol(), meta });
     };
 
@@ -90,36 +162,42 @@ void BuiltinEffectsRepository::updateEffectMetaList()
             regMeta(desc,
                     muse::mtrc("effects", "Amplify"),
                     muse::mtrc("effects", "Increases or decreases the volume of the audio you have selected"),
+                    EffectCategoryId::VolumeAndCompression,
                     false
                     );
         } else if (symbol == FadeInEffect::Symbol) {
             regMeta(desc,
                     muse::mtrc("effects", "Fade In"),
                     muse::mtrc("effects", "Applies a linear fade-in to the selected audio"),
+                    EffectCategoryId::Fading,
                     true
                     );
         } else if (symbol == FadeOutEffect::Symbol) {
             regMeta(desc,
                     muse::mtrc("effects", "Fade Out"),
                     muse::mtrc("effects", "Applies a linear fade-out to the selected audio"),
+                    EffectCategoryId::Fading,
                     true
                     );
         } else if (symbol == InvertEffect::Symbol) {
             regMeta(desc,
                     muse::mtrc("effects", "Invert"),
                     muse::mtrc("effects", "Flips the audio samples upside-down, reversing their polarity"),
+                    EffectCategoryId::Special,
                     true
                     );
         } else if (symbol == Repair::Symbol) {
             regMeta(desc,
                     muse::mtrc("effects", "Repair"),
                     muse::mtrc("effects", "Sets the peak amplitude of a one or more tracks"),
+                    EffectCategoryId::NoiseRemovalAndRepair,
                     false
                     );
         } else if (symbol == ReverseEffect::Symbol) {
             regMeta(desc,
                     muse::mtrc("effects", "Reverse"),
                     muse::mtrc("effects", "Reverses the selected audio"),
+                    EffectCategoryId::Special,
                     true
                     );
         } else if (symbol == ChirpEffect::Symbol) {
@@ -127,6 +205,7 @@ void BuiltinEffectsRepository::updateEffectMetaList()
             regMeta(desc,
                     muse::mtrc("effects", "Chirp"),
                     muse::mtrc("effects", "Generates an ascending or descending tone of one of four types"),
+                    EffectCategoryId::None,
                     false
                     );
         } else if (symbol == ToneEffect::Symbol) {
@@ -135,6 +214,7 @@ void BuiltinEffectsRepository::updateEffectMetaList()
             regMeta(desc,
                     muse::mtrc("effects", "Tone"),
                     muse::mtrc("effects", "Generates a constant frequency tone of one of four types"),
+                    EffectCategoryId::None,
                     false
                     );
         } else if (symbol == ReverbEffect::Symbol) {
@@ -143,6 +223,7 @@ void BuiltinEffectsRepository::updateEffectMetaList()
             regMeta(desc,
                     muse::mtrc("effects", "Reverb"),
                     muse::mtrc("effects", "Reverb effect"),
+                    EffectCategoryId::DelayAndReverb,
                     true
                     );
         } else if (symbol == NoiseGenerator::Symbol) {
@@ -151,6 +232,7 @@ void BuiltinEffectsRepository::updateEffectMetaList()
             regMeta(desc,
                     muse::mtrc("effects/noise", "Noise"),
                     muse::mtrc("effects/noise", "Generates noise"),
+                    EffectCategoryId::None,
                     false
                     );
         } else if (symbol == DtmfGenerator::Symbol) {
@@ -159,6 +241,16 @@ void BuiltinEffectsRepository::updateEffectMetaList()
             regMeta(desc,
                     muse::mtrc("effects/dtmf", "DTMF Tones"),
                     muse::mtrc("effects/dtmf", "Generates DTMF signal"),
+                    EffectCategoryId::None,
+                    false
+                    );
+        } else if (symbol == SilenceGenerator::Symbol) {
+            qmlRegisterType<SilenceViewModel>("Audacity.Effects", 1, 0, "SilenceViewModel");
+            regView(SilenceGenerator::Symbol, u"qrc:/silencegen/SilenceView.qml");
+            regMeta(desc,
+                    muse::mtrc("effects/silence", "Silence"),
+                    muse::mtrc("effects/silence", "Generates silence"),
+                    EffectCategoryId::None,
                     false
                     );
         } else {

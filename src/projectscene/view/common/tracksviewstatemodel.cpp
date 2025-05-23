@@ -40,6 +40,14 @@ void TracksViewStateModel::init()
         emit tracksVerticalScrollLockedChanged();
     });
 
+    m_snapEnabled = vs->isSnapEnabled();
+    vs->snap().ch.onReceive(this, [this](const Snap& snap) {
+        if (m_snapEnabled != snap.enabled) {
+            m_snapEnabled = snap.enabled;
+            emit snapEnabledChanged();
+        }
+    });
+
     if (m_trackId != -1) {
         m_trackHeight = vs->trackHeight(m_trackId);
         m_trackHeight.ch.onReceive(this, [this](int h) {
@@ -72,6 +80,14 @@ void TracksViewStateModel::init()
         m_ctrlPressed.val = v;
         emit ctrlPressedChanged();
     });
+
+    playbackController()->isPlayingChanged().onNotify(this, [this]() {
+        emit isPlayingChanged();
+    });
+
+    recordController()->isRecordingChanged().onNotify(this, [this]() {
+        emit isRecordingChanged();
+    });
 }
 
 void TracksViewStateModel::changeTrackHeight(int deltaY)
@@ -80,6 +96,16 @@ void TracksViewStateModel::changeTrackHeight(int deltaY)
     if (vs) {
         vs->changeTrackHeight(m_trackId, deltaY);
     }
+}
+
+bool TracksViewStateModel::snapEnabled()
+{
+    IProjectViewStatePtr vs = viewState();
+    if (vs) {
+        return vs->isSnapEnabled();
+    }
+
+    return false;
 }
 
 void TracksViewStateModel::changeTracksVericalY(int deltaY)
@@ -164,4 +190,14 @@ bool TracksViewStateModel::altPressed() const
 bool TracksViewStateModel::ctrlPressed() const
 {
     return m_ctrlPressed.val;
+}
+
+bool TracksViewStateModel::isPlaying() const
+{
+    return playbackController()->isPlaying();
+}
+
+bool TracksViewStateModel::isRecording() const
+{
+    return recordController()->isRecording();
 }

@@ -22,8 +22,10 @@
         <file>qml/FirstLaunchSetup/ThemesPage.qml</file>
         <file>qml/FirstLaunchSetup/PlaybackPage.qml</file>
         <file>qml/FirstLaunchSetup/TutorialsPage.qml</file>
+        <file>qml/FirstLaunchSetup/UnderConstructionPage.qml</file>
         <file>qml/FirstLaunchSetup/resources/MuseSounds.png</file>
         <file>qml/FirstLaunchSetup/resources/VideoTutorials.png</file>
+        <file>qml/FirstLaunchSetup/resources/UnderConstruction.png</file>
         <file>qml/Preferences/PreferencesPage.qml</file>
         <file>qml/Preferences/GeneralPreferencesPage.qml</file>
         <file>qml/Preferences/UpdatePreferencesPage.qml</file>
@@ -33,6 +35,7 @@
         <file>qml/Preferences/AdvancedPreferencesPage.qml</file>
         <file>qml/Preferences/CanvasPreferencesPage.qml</file>
         <file>qml/Preferences/EditPreferencesPage.qml</file>
+        <file>qml/Preferences/PluginPreferencesPage.qml</file>
         <file>qml/Preferences/ScorePreferencesPage.qml</file>
         <file>qml/Preferences/ShortcutsPreferencesPage.qml</file>
         <file>qml/Preferences/ImportPreferencesPage.qml</file>
@@ -43,6 +46,7 @@
         <file>qml/Preferences/PreferencesDialog.qml</file>
         <file>qml/Preferences/internal/PreferencesButtonsPanel.qml</file>
         <file>qml/Preferences/internal/PreferencesMenu.qml</file>
+        <file>qml/Preferences/internal/EffectOptionsSection.qml</file>
         <file>qml/Preferences/internal/ThemesSection.qml</file>
         <file>qml/Preferences/internal/ClipStyleSection.qml</file>
         <file>qml/Preferences/internal/AccentColorsSection.qml</file>
@@ -53,6 +57,10 @@
         <file>qml/Preferences/internal/CharsetsSection.qml</file>
         <file>qml/Preferences/internal/MidiSection.qml</file>
         <file>qml/Preferences/internal/MonoStereoConversionSection.qml</file>
+        <file>qml/Preferences/internal/EffectBehaviorSection.qml</file>
+        <file>qml/Preferences/internal/AsymmetricStereoHeightsSection.qml</file>
+        <file>qml/Preferences/internal/WorkspacesAsymmetricChannelsSection.qml</file>
+        <file>qml/Preferences/internal/PastingBehaviorSection.qml</file>
         <file>qml/Preferences/internal/MusicXmlSection.qml</file>
         <file>qml/Preferences/internal/MidiDevicesSection.qml</file>
         <file>qml/Preferences/internal/AudioEngineSection.qml</file>
@@ -105,6 +113,8 @@
         <file>resources/LoadingScreen.svg</file>
         <file>resources/Classic.svg</file>
         <file>resources/Colorful.svg</file>
+        <file>resources/AsymmetricStereoHeights.svg</file>
+        <file>resources/StereoHeightsCursor.png</file>
         <file>qml/Preferences/BraillePreferencesPage.qml</file>
         <file>qml/Preferences/internal/BrailleSection.qml</file>
         <file>qml/Preferences/internal/BrailleAdvancedSection.qml</file>
@@ -115,5 +125,6 @@
         <file>qml/platform/PlatformMenuBar.qml</file>
         <file>qml/ProjectPage/ProjectPage.qml</file>
         <file>qml/ProjectPage/ProjectStatusBar.qml</file>
+        <file>qml/Preferences/qmldir</file>
     </qresource>
 </RCC>

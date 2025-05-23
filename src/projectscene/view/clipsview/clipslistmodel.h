@@ -11,6 +11,7 @@
 #include "context/iglobalcontext.h"
 #include "global/iinteractive.h"
 #include "global/async/asyncable.h"
+#include "workspace/iworkspacemanager.h"
 
 #include "trackedit/iselectioncontroller.h"
 #include "trackedit/itrackeditinteraction.h"
@@ -28,6 +29,8 @@ class ClipsListModel : public QAbstractListModel, public muse::async::Asyncable,
     Q_PROPERTY(QVariant trackId READ trackId WRITE setTrackId NOTIFY trackIdChanged FINAL)
     Q_PROPERTY(bool isStereo READ isStereo NOTIFY isStereoChanged FINAL)
     Q_PROPERTY(ClipStyles::Style clipStyle READ clipStyle NOTIFY clipStyleChanged FINAL)
+    Q_PROPERTY(
+        bool asymmetricStereoHeightsPossible READ asymmetricStereoHeightsPossible NOTIFY asymmetricStereoHeightsPossibleChanged)
 
     Q_PROPERTY(int cacheBufferPx READ cacheBufferPx CONSTANT)
 
@@ -37,6 +40,7 @@ class ClipsListModel : public QAbstractListModel, public muse::async::Asyncable,
     muse::Inject<trackedit::ITrackeditInteraction> trackeditInteraction;
     muse::Inject<trackedit::ISelectionController> selectionController;
     muse::Inject<projectscene::IProjectSceneConfiguration> projectSceneConfiguration;
+    muse::Inject<muse::workspace::IWorkspaceManager> workspacesManager;
 
 public:
     explicit ClipsListModel(QObject* parent = nullptr);
@@ -56,10 +60,10 @@ public:
     Q_INVOKABLE void endEditClip(const ClipKey& key);
 
     Q_INVOKABLE bool moveSelectedClips(const ClipKey& key, bool completed);
-    Q_INVOKABLE bool trimLeftClip(const ClipKey& key, bool completed);
-    Q_INVOKABLE bool trimRightClip(const ClipKey& key, bool completed);
-    Q_INVOKABLE bool stretchLeftClip(const ClipKey& key, bool completed);
-    Q_INVOKABLE bool stretchRightClip(const ClipKey& key, bool completed);
+    Q_INVOKABLE bool trimLeftClip(const ClipKey& key, bool completed, ClipBoundary::Action action = ClipBoundary::Action::Shrink);
+    Q_INVOKABLE bool trimRightClip(const ClipKey& key, bool completed, ClipBoundary::Action action = ClipBoundary::Action::Shrink);
+    Q_INVOKABLE bool stretchLeftClip(const ClipKey& key, bool completed, ClipBoundary::Action action = ClipBoundary::Action::Shrink);
+    Q_INVOKABLE bool stretchRightClip(const ClipKey& key, bool completed, ClipBoundary::Action action = ClipBoundary::Action::Shrink);
 
     Q_INVOKABLE void selectClip(const ClipKey& key);
     Q_INVOKABLE void resetSelectedClips();
@@ -74,8 +78,12 @@ public:
     Q_INVOKABLE void openClipSpeedEdit(const ClipKey& key);
     Q_INVOKABLE void resetClipSpeed(const ClipKey& key);
 
+    Q_INVOKABLE QVariant findGuideline(const ClipKey& key, Direction direction);
+
     // update clip after moving to other track
     Q_INVOKABLE projectscene::ClipKey updateClipTrack(ClipKey clipKey) const;
+
+    bool asymmetricStereoHeightsPossible() const;
 
     int rowCount(const QModelIndex& parent) const override;
     QHash<int, QByteArray> roleNames() const override;
@@ -89,6 +97,7 @@ signals:
     void selectedClipIdxChanged();
     void isStereoChanged();
     void clipStyleChanged();
+    void asymmetricStereoHeightsPossibleChanged();
 
     void requestClipTitleEdit(int index);
 
@@ -104,6 +113,11 @@ private:
         ClipItemRole = Qt::UserRole + 1,
     };
 
+    struct MoveOffset {
+        muse::secs_t timeOffset = 0.0;
+        int trackOffset = 0;
+    };
+
     void setSelectedItems(const QList<ClipListItem*>& items);
     void addSelectedItem(ClipListItem* item);
     void clearSelectedItems();
@@ -114,13 +128,17 @@ private:
     void positionViewAtClip(const trackedit::Clip& clip);
     void onSelectedClip(const trackedit::ClipKey& k);
     void onSelectedClips(const trackedit::ClipKeyList& keyList);
-    void onClipRenameAction(const muse::actions::ActionData& args);
     ClipListItem* itemByKey(const trackedit::ClipKey& k) const;
     int indexByKey(const trackedit::ClipKey& k) const;
     QVariant neighbor(const ClipKey& key, int offset) const;
+    void requestClipTitleChange();
 
+    MoveOffset calculateMoveOffset(const ClipListItem* item, const ClipKey& key, bool completed) const;
     trackedit::secs_t calculateTimePositionOffset(const ClipListItem* item) const;
     int calculateTrackPositionOffset(const ClipKey& key, bool completed) const;
+    bool isKeyboardTriggered() const;
+
+    void handleAutoScroll(bool ok, bool completed, const std::function<void()>& onAutoScrollFrame);
 
     Qt::KeyboardModifiers keyboardModifiers() const;
 

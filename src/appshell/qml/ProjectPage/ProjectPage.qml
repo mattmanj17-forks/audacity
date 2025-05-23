@@ -47,28 +47,40 @@ DockPage {
         order: 2
     }
 
+    property NavigationSection trackEffectsKeyNavSec: NavigationSection {
+        name: "TrackEffectsSection"
+        enabled: tracksPanel.showEffectsSection
+        order: playbackToolBarKeyNavSec.order + 1
+    }
+
+    property NavigationSection masterEffectsKeyNavSec: NavigationSection {
+        name: "MasterEffectsSection"
+        enabled: tracksPanel.showEffectsSection
+        order: trackEffectsKeyNavSec.order + 1
+    }
+
     property NavigationSection keynavTopPanelSec: NavigationSection {
         name: "NavigationTopPanel"
         enabled: root.visible
-        order: 3
+        order: masterEffectsKeyNavSec.order + 1
     }
 
     property NavigationSection keynavLeftPanelSec: NavigationSection {
         name: "NavigationLeftPanel"
         enabled: root.visible
-        order: 4
+        order: keynavTopPanelSec.order + 1
     }
 
     property NavigationSection keynavRightPanelSec: NavigationSection {
         name: "NavigationRightPanel"
         enabled: root.visible
-        order: 6
+        order: keynavLeftPanelSec.order + 1
     }
 
     property NavigationSection keynavBottomPanelSec: NavigationSection {
         name: "NavigationBottomPanel"
         enabled: root.visible
-        order: 7
+        order: keynavRightPanelSec.order + 1
     }
 
     function navigationPanelSec(location) {
@@ -186,21 +198,51 @@ DockPage {
                 root.toolBarBottomDropDestination
             ]
 
-            //! small hack: needed so that when the screen is quickly reduced the dock system works correctly
             minimumWidth: 300
+            resizable: true
 
             PlaybackToolBar {
+                id: playbackToolBarContent
+
                 floating: playbackToolBar.floating
+                onFloatingChanged: {
+                    //! HACK: When docking and undocking we recalculate
+                    //        the toolbar's content size and it looks ugly for the user.
+                    //        Let's hide the content, delayedly relayout the window and show the content.
+                    relayout()
+                }
 
                 maximumWidth: playbackToolBar.width - 30 /* grip button */
                 maximumHeight: playbackToolBar.height
 
                 onHeightChanged: {
+                    if (!playbackToolBar.inited) {
+                        return
+                    }
+
                     playbackToolBar.thickness = height
+                }
+
+                onRelayoutRequested: {
+                    relayout()
                 }
 
                 navigationPanel.section: root.playbackToolBarKeyNavSec
                 navigationPanel.order: 1
+
+                function relayout() {
+                    visible = false
+                    playbackToolBarRelayoutTimer.start()
+                }
+
+                Timer {
+                    id: playbackToolBarRelayoutTimer
+                    interval: 20
+                    onTriggered: {
+                        root.layoutRequested()
+                        playbackToolBarContent.visible = true
+                    }
+                }
             }
         }
     ]
@@ -225,6 +267,8 @@ DockPage {
             width: panelWidth
             minimumWidth: panelWidth
             maximumWidth: panelWidth
+
+            minimumHeight: 83
 
             groupName: root.verticalPanelsGroup
 
@@ -251,6 +295,9 @@ DockPage {
 
                 navigationSection: tracksPanel.navigationSection
                 effectsSectionWidth: tracksPanel.effectsSectionWidth
+
+                trackEffectsNavigationSection: root.trackEffectsKeyNavSec
+                masterEffectsNavigationSection: root.masterEffectsKeyNavSec
 
                 onOpenEffectsRequested: {
                     tracksPanel.showEffectsSection = true
@@ -303,6 +350,8 @@ DockPage {
 
     central: TracksClipsView {
         id: clipsView
+
+        navigationSection: tracksPanel.navigationSection
     }
 
     statusBar: DockStatusBar {

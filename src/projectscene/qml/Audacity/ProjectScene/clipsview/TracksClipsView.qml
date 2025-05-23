@@ -11,10 +11,13 @@ Rectangle {
 
     id: root
 
+    property NavigationSection navigationSection: null
+
     property bool clipHovered: false
     property bool clipHeaderHovered: false
     property var hoveredClipKey: null
     property bool tracksHovered: false
+    property bool guidelineActive: false
     property alias altPressed: tracksViewState.altPressed
     property alias ctrlPressed: tracksViewState.ctrlPressed
 
@@ -112,10 +115,15 @@ Rectangle {
         playPositionActionController.init()
         tracksViewState.init()
         project.init()
+
         //! NOTE Loading tracks, or rather clips, is the most havy operation.
         // Let's make sure that everything is loaded and initialized before this,
         // to avoid double loading at the beginning, when some parameters are initialized.
         Qt.callLater(tracksModel.load)
+
+        //! NOTE setting verticalY has to be done after tracks are loaded,
+        // otherwise project always starts at the very top
+        Qt.callLater(() => tracksClipsView.contentY = tracksViewState.tracksVericalY)
     }
 
     Rectangle {
@@ -300,9 +308,10 @@ Rectangle {
                     return
                 }
 
-                if (root.clipHeaderHovered && tracksClipsView.moveActive) {
+                if (root.clipHeaderHovered) {
                     tracksClipsView.clipMoveRequested(hoveredClipKey, true)
                     tracksClipsView.stopAutoScroll()
+                    tracksClipsView.clipEndEditRequested(hoveredClipKey)
                 } else {
                     if (selectionController.isLeftSelection(e.x)) {
                         playCursorController.seekToX(e.x)
@@ -369,6 +378,9 @@ Rectangle {
                 anchors.fill: parent
                 clip: true
 
+                navigation.section: root.navigationSection
+                navigation.order: 3
+
                 property bool moveActive: false
 
                 ScrollBar.horizontal: null
@@ -388,6 +400,7 @@ Rectangle {
 
                 signal clipMoveRequested(var clipKey, bool completed)
                 signal clipStartEditRequested(var clipKey)
+                signal clipEndEditRequested(var clipKey)
                 signal startAutoScroll()
                 signal stopAutoScroll()
 
@@ -453,6 +466,10 @@ Rectangle {
                     selectionEditInProgress: selectionController.selectionEditInProgress
                     selectionInProgress: selectionController.selectionInProgress
 
+                    trackIdx: model.index
+                    navigationSection: root.navigationSection
+                    navigationPanel: tracksClipsView.navigation
+
                     onTrackItemMousePositionChanged: function(xWithinTrack, yWithinTrack, clipKey) {
                         let xGlobalPosition = xWithinTrack
                         let yGlobalPosition = y + yWithinTrack - tracksClipsView.contentY
@@ -498,6 +515,15 @@ Rectangle {
 
                     onSeekToX: function(x) {
                         playCursorController.seekToX(x)
+                    }
+
+                    onInsureVerticallyVisible: function(clipTop, clipBottom) {
+                        var delta = calculateVerticalScrollDelta(tracksViewState.tracksVericalY, tracksViewState.tracksVericalY + content.height, clipTop, clipBottom)
+                        if (tracksViewState.tracksVericalY + delta < 0) {
+                            tracksViewState.changeTracksVericalY(0)
+                        } else {
+                            tracksViewState.changeTracksVericalY(tracksViewState.tracksVericalY + delta)
+                        }
                     }
 
                     onInteractionStarted: {
@@ -549,6 +575,30 @@ Rectangle {
                             return track && track.rightTrimPressedButtons
                         })
                     }
+
+                    onTriggerGuideline: function(x, completed) {
+                        clipGuideline.x = timeline.context.timeToPosition(x)
+                        root.guidelineActive = x != -1 && !completed
+                    }
+
+                    function calculateVerticalScrollDelta(viewTop, viewBottom, clipTop, clipBottom, padding = 10) {
+                        // clip fully visible
+                        if (clipTop >= viewTop && clipBottom <= viewBottom) {
+                            return 0
+                        }
+
+                        // clip is above the view —> scroll up
+                        if (clipTop < viewTop) {
+                            return clipTop - (viewTop + padding)
+                        }
+
+                        // clip is below the view —> scroll down
+                        if (clipBottom > viewBottom) {
+                            return clipBottom - (viewBottom - padding)
+                        }
+
+                        return 0;
+                    }
                 }
             }
 
@@ -593,6 +643,19 @@ Rectangle {
             onPlayCursorMousePositionChanged: function(ix) {
                 timeline.updateCursorPosition(ix, -1)
             }
+        }
+
+        Rectangle {
+            id: clipGuideline
+
+            anchors.top: content.top
+            anchors.bottom: content.bottom
+
+            width: 1
+
+            color: tracksViewState.snapEnabled ? "#00E5FF" : "#FFF200"
+
+            visible: root.guidelineActive
         }
 
         VerticalRulersPanel {
