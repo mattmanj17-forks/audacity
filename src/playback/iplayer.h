@@ -1,7 +1,10 @@
 #pragma once
 
 #include <memory>
+#include <optional>
+#include <string>
 
+#include "framework/global/modularity/imoduleinterface.h"
 #include "framework/global/types/ret.h"
 #include "framework/global/types/retval.h"
 #include "framework/global/async/channel.h"
@@ -11,14 +14,20 @@
 
 class TrackList;
 namespace au::playback {
-class IPlayer
+class IAudioOutput;
+class IPlayer : MODULE_EXPORT_INTERFACE
 {
+    INTERFACE_ID(IPlayer)
+
 public:
     virtual ~IPlayer() = default;
 
     virtual bool isBusy() const = 0;
 
-    virtual void play() = 0;
+    //! Starts playback of the current playback region. `startTime`, when given,
+    //! is where within that region the stream begins producing audio (au3's
+    //! pStartTime) — the region itself is not modified.
+    virtual void play(std::optional<muse::secs_t> startTime = std::nullopt) = 0;
     virtual void seek(const muse::secs_t newPosition, bool applyIfPlaying = false) = 0;
     virtual void rewind() = 0;
     virtual void stop() = 0;
@@ -60,6 +69,14 @@ public:
 
     // tracks
     virtual muse::Ret playTracks(TrackList& trackList, double startTime, double endTime, const PlayTracksOptions& options = {}) = 0;
+
+    // raw playback status (the transport session state lives on ITransport)
+    virtual bool isPlaying() const = 0;
+    virtual bool isPaused() const = 0;
+    virtual bool isStopped() const = 0;
+    virtual muse::async::Notification isPlayingChanged() const = 0;
+
+    virtual std::shared_ptr<IAudioOutput> audioOutput() const = 0;
 };
 
 using IPlayerPtr = std::shared_ptr<IPlayer>;

@@ -6,13 +6,14 @@
 #include <gmock/gmock.h>
 
 #include "playback/iplayer.h"
+#include "playback/iaudiooutput.h"
 
 namespace au::playback {
 class PlayerMock : public IPlayer
 {
 public:
     MOCK_METHOD(bool, isBusy, (), (const, override));
-    MOCK_METHOD(void, play, (), (override));
+    MOCK_METHOD(void, play, (std::optional<muse::secs_t>), (override));
     MOCK_METHOD(void, seek, (const muse::secs_t, bool), (override));
     MOCK_METHOD(void, rewind, (), (override));
     MOCK_METHOD(void, stop, (), (override));
@@ -47,5 +48,15 @@ public:
     MOCK_METHOD(muse::async::Channel<muse::secs_t>, playbackPositionChanged, (), (const, override));
 
     MOCK_METHOD(muse::Ret, playTracks, (TrackList&, double, double, const PlayTracksOptions&), (override));
+
+    MOCK_METHOD(muse::async::Notification, isPlayingChanged, (), (const, override));
+
+    //! The raw status predicates derive from playbackStatus() so tests can drive
+    //! the whole transport state machine by stubbing a single getter.
+    bool isPlaying() const override { return playbackStatus() == PlaybackStatus::Running; }
+    bool isPaused() const override { return playbackStatus() == PlaybackStatus::Paused; }
+    bool isStopped() const override { return playbackStatus() == PlaybackStatus::Stopped; }
+
+    MOCK_METHOD(std::shared_ptr<IAudioOutput>, audioOutput, (), (const, override));
 };
 }

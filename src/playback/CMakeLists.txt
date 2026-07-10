@@ -12,10 +12,9 @@ set(MODULE_SRC
     ${CMAKE_CURRENT_LIST_DIR}/playbackmodule.cpp
     ${CMAKE_CURRENT_LIST_DIR}/playbackmodule.h
     ${CMAKE_CURRENT_LIST_DIR}/playbacktypes.h
-    ${CMAKE_CURRENT_LIST_DIR}/iplayback.h
     ${CMAKE_CURRENT_LIST_DIR}/iplayer.h
+    ${CMAKE_CURRENT_LIST_DIR}/itransport.h
     ${CMAKE_CURRENT_LIST_DIR}/iaudiooutput.h
-    ${CMAKE_CURRENT_LIST_DIR}/iplaybackcontroller.h
     ${CMAKE_CURRENT_LIST_DIR}/iplaybackmeter.h
     ${CMAKE_CURRENT_LIST_DIR}/iplaybackmetercontroller.h
     ${CMAKE_CURRENT_LIST_DIR}/iplaybackconfiguration.h
@@ -24,15 +23,16 @@ set(MODULE_SRC
     #internals
     ${CMAKE_CURRENT_LIST_DIR}/internal/playbackconfiguration.cpp
     ${CMAKE_CURRENT_LIST_DIR}/internal/playbackconfiguration.h
-    ${CMAKE_CURRENT_LIST_DIR}/internal/playbackcontroller.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/internal/playbackcontroller.h
     ${CMAKE_CURRENT_LIST_DIR}/internal/playbackmetercontroller.cpp
     ${CMAKE_CURRENT_LIST_DIR}/internal/playbackmetercontroller.h
     ${CMAKE_CURRENT_LIST_DIR}/internal/playbackuiactions.cpp
     ${CMAKE_CURRENT_LIST_DIR}/internal/playbackuiactions.h
 
-    ${CMAKE_CURRENT_LIST_DIR}/internal/au3/au3playback.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/internal/au3/au3playback.h
+    ${CMAKE_CURRENT_LIST_DIR}/internal/transport.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/internal/transport.h
+    ${CMAKE_CURRENT_LIST_DIR}/internal/transportactionscontroller.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/internal/transportactionscontroller.h
+
     ${CMAKE_CURRENT_LIST_DIR}/internal/au3/au3player.cpp
     ${CMAKE_CURRENT_LIST_DIR}/internal/au3/au3player.h
     ${CMAKE_CURRENT_LIST_DIR}/internal/au3/au3audiooutput.cpp

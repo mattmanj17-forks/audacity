@@ -1,6 +1,7 @@
 #include "playbackmeterpanelmodel.h"
 
 #include "playback/playbacktypes.h"
+#include "playback/iplayer.h"
 
 using namespace au::playback;
 
@@ -15,22 +16,22 @@ void PlaybackMeterPanelModel::init()
     m_meterModel->init();
     emit meterModelChanged();
 
-    playback()->audioOutput()->playbackSignalChanges().onReceive(this,
-                                                                 [this](const trackedit::audioch_t audioChNum,
-                                                                        const audio::MeterSignal& meterSignal) {
+    player()->audioOutput()->playbackSignalChanges().onReceive(this,
+                                                               [this](const trackedit::audioch_t audioChNum,
+                                                                      const audio::MeterSignal& meterSignal) {
         setAudioChannelVolumePressure(audioChNum, meterSignal.peak.pressure);
         setAudioChannelRMS(audioChNum, meterSignal.rms.pressure);
     });
 
-    playback()->audioOutput()->playbackVolumeChanged().onReceive(this, [this](audio::volume_dbfs_t volume){
+    player()->audioOutput()->playbackVolumeChanged().onReceive(this, [this](audio::volume_dbfs_t volume){
         m_meterModel->setVolume(volume);
         emit levelChanged();
     });
 
-    m_meterModel->setVolume(playback()->audioOutput()->playbackVolume());
+    m_meterModel->setVolume(player()->audioOutput()->playbackVolume());
     emit levelChanged();
 
-    playbackController()->isPlayingChanged().onNotify(this, [this]() {
+    player()->isPlayingChanged().onNotify(this, [this]() {
         emit isPlayingChanged();
     });
 
@@ -54,7 +55,7 @@ float PlaybackMeterPanelModel::level() const
 
 bool PlaybackMeterPanelModel::isPlaying() const
 {
-    return playbackController()->isPlaying();
+    return player()->isPlaying();
 }
 
 void PlaybackMeterPanelModel::setLeftChannelPressure(float leftChannelPressure)
@@ -136,5 +137,5 @@ void PlaybackMeterPanelModel::volumeLevelChangeRequested(float level)
         return;
     }
 
-    playback()->audioOutput()->setPlaybackVolume(level);
+    player()->audioOutput()->setPlaybackVolume(level);
 }

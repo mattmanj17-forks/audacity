@@ -22,6 +22,7 @@
 
 struct TransportSequences;
 namespace au::playback {
+class Au3AudioOutput;
 class Au3Player : public IPlayer, public muse::async::Asyncable, public muse::Contextable
 {
     muse::GlobalInject<au::audio::IAudioEngine> audioEngine;
@@ -33,9 +34,11 @@ public:
 
     Au3Player(const muse::modularity::ContextPtr& ctx);
 
+    void init();
+
     bool isBusy() const override;
 
-    void play() override;
+    void play(std::optional<muse::secs_t> startTime = std::nullopt) override;
     void seek(const muse::secs_t newPosition, bool applyIfPlaying = false) override;
     void rewind() override;
     void stop() override;
@@ -69,6 +72,14 @@ public:
 
     muse::Ret playTracks(TrackList& trackList, double startTime, double endTime, const PlayTracksOptions& options = {}) override;
 
+    // --- raw playback status (read by the Transport coordinator and consumers) ---
+    bool isPlaying() const override;
+    bool isPaused() const override;
+    bool isStopped() const override;
+    muse::async::Notification isPlayingChanged() const override;
+
+    std::shared_ptr<IAudioOutput> audioOutput() const override;
+
 private:
     au3::Au3Project& projectRef() const;
 
@@ -76,12 +87,14 @@ private:
 
     TransportSequences makeTransportTracks(au3::Au3TrackList& trackList, bool selectedOnly);
 
-    muse::Ret doPlayTracks(TrackList& trackList, double startTime, double endTime, const PlayTracksOptions& options = {});
+    muse::Ret doPlayTracks(TrackList& trackList, double startTime, double endTime, const PlayTracksOptions& options = {},
+                           std::optional<double> pStartTime = std::nullopt);
 
     void updateStreamState();
     void updatePlaybackState();
 
     muse::async::Notification m_loopRegionChanged;
+    muse::async::Notification m_isPlayingChanged;
 
     muse::ValCh<PlaybackStatus> m_playbackStatus;
     muse::ValNt<bool> m_reachedEnd;
@@ -99,5 +112,7 @@ private:
     std::optional<TargetPoint> m_currentTarget;
     unsigned long long m_consumedSamplesSoFar = 0;
     QTimer m_timer;
+
+    mutable std::shared_ptr<Au3AudioOutput> m_audioOutput;
 };
 }

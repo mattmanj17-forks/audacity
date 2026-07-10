@@ -67,16 +67,25 @@ bool Au3AudioEngine::isCapturing() const
 
 int Au3AudioEngine::startStream(const TransportSequences& sequences, const double startTime, const double endTime,
                                 const double mixerEndTime,
-                                AudacityProject& project, const bool isDefaultPlayTrackPolicy, const double audioStreamSampleRate,
-                                const double leadInTime,
-                                std::vector<std::vector<float> >* crossfadeData)
+                                project::IAudacityProject& project, const bool isDefaultPlayTrackPolicy,
+                                const double audioStreamSampleRate, const double leadInTime,
+                                std::vector<std::vector<float> >* crossfadeData,
+                                const std::optional<double> pStartTime)
 {
-    AudioIOStartStreamOptions options = ProjectAudioIO::GetDefaultOptions(project, isDefaultPlayTrackPolicy);
+    AudacityProject& au3Project = *reinterpret_cast<AudacityProject*>(project.au3ProjectPtr());
+    AudioIOStartStreamOptions options = ProjectAudioIO::GetDefaultOptions(au3Project, isDefaultPlayTrackPolicy);
     options.inputMonitoring = recordConfiguration()->isInputMonitoringOn();
     options.rate = audioStreamSampleRate;
     options.leadInTime = leadInTime;
     if (crossfadeData) {
         options.pCrossfadeData = crossfadeData;
+    }
+    if (pStartTime.has_value()) {
+        // Override the default (play-region start, set by the DefaultOptions
+        // scope above via GetDefaultOptions): begin producing audio here
+        // instead. The policy factory reads this from the same options object,
+        // so an active loop region resumes at this position too.
+        options.pStartTime = *pStartTime;
     }
     auto& audioIO = *AudioIO::Get();
     const int token = audioIO.StartStream(sequences, startTime, endTime, mixerEndTime, options);
@@ -103,9 +112,10 @@ void Au3AudioEngine::seekStream(double time)
     AudioIO::Get()->SeekStream(time - AudioIO::Get()->GetStreamTime());
 }
 
-void Au3AudioEngine::startMonitoring(AudacityProject& project)
+void Au3AudioEngine::startMonitoring(project::IAudacityProject& project)
 {
-    AudioIOStartStreamOptions options = ProjectAudioIO::GetDefaultOptions(project);
+    AudacityProject& au3Project = *reinterpret_cast<AudacityProject*>(project.au3ProjectPtr());
+    AudioIOStartStreamOptions options = ProjectAudioIO::GetDefaultOptions(au3Project);
     options.inputMonitoring = recordConfiguration()->isInputMonitoringOn();
     AudioIO::Get()->StartMonitoring(options);
 }
@@ -113,6 +123,11 @@ void Au3AudioEngine::startMonitoring(AudacityProject& project)
 void Au3AudioEngine::stopMonitoring()
 {
     AudioIO::Get()->StopMonitoring();
+}
+
+bool Au3AudioEngine::isMonitoring() const
+{
+    return AudioIO::Get()->IsMonitoring();
 }
 
 void Au3AudioEngine::setInputVolume(const float newInputVolume)
@@ -151,11 +166,12 @@ float Au3AudioEngine::getPlaybackVolume() const
     return playbackVolume;
 }
 
-bool Au3AudioEngine::canStopAudioStream(AudacityProject& project) const
+bool Au3AudioEngine::canStopAudioStream(project::IAudacityProject& project) const
 {
+    AudacityProject& au3Project = *reinterpret_cast<AudacityProject*>(project.au3ProjectPtr());
     return !AudioIO::Get()->IsStreamActive()
            || AudioIO::Get()->IsMonitoring()
-           || AudioIO::Get()->GetOwningProject().get() == &project;
+           || AudioIO::Get()->GetOwningProject().get() == &au3Project;
 }
 
 void Au3AudioEngine::handleDeviceChange()

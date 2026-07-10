@@ -9,7 +9,7 @@
 
 #include "modularity/ioc.h"
 #include "context/iglobalcontext.h"
-#include "playback/iplaybackcontroller.h"
+#include "playback/iplayer.h"
 #include "playback/iplaybackconfiguration.h"
 #include "record/irecordcontroller.h"
 
@@ -36,7 +36,7 @@ class TrackViewStateModel : public QObject, public muse::Contextable, public mus
     muse::GlobalInject<playback::IPlaybackConfiguration> playbackConfiguration;
 
     muse::ContextInject<context::IGlobalContext> globalContext{ this };
-    muse::ContextInject<playback::IPlaybackController> playbackController{ this };
+    muse::ContextInject<playback::IPlayer> player{ this };
     muse::ContextInject<record::IRecordController> recordController{ this };
 
 public:

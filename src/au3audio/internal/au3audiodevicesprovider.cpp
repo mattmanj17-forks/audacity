@@ -206,9 +206,22 @@ async::Notification Au3AudioDevicesProvider::inputDeviceChanged() const
 
 void Au3AudioDevicesProvider::handleDeviceChange()
 {
-    if (audioEngine()) {
-        audioEngine()->stopMonitoring();
-        audioEngine()->handleDeviceChange();
+    if (!audioEngine()) {
+        return;
+    }
+
+    const bool wasMonitoring = audioEngine()->isMonitoring();
+
+    audioEngine()->stopMonitoring();
+    if (audioEngine()->isBusy()) {
+        audioEngine()->stopStream();
+    }
+    audioEngine()->handleDeviceChange();
+
+    if (wasMonitoring) {
+        if (const auto project = globalContext()->currentProject()) {
+            audioEngine()->startMonitoring(*project);
+        }
     }
 }
 
@@ -239,7 +252,15 @@ int Au3AudioDevicesProvider::inputChannelsAvailable() const
 
 void Au3AudioDevicesProvider::setInputChannels(const int count)
 {
+    if (count == inputChannelsSelected()) {
+        return;
+    }
+
     muse::settings()->setLocalValue(INPUT_CHANNELS, muse::Val(count));
+
+    // The capture channel count can't be changed on an open stream, so tear it
+    // down just like an input-device change does (via setupInputDevice()).
+    handleDeviceChange();
 }
 
 double Au3AudioDevicesProvider::bufferLength() const

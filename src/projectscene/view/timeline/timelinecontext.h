@@ -11,8 +11,8 @@
 #include "actions/iactionsdispatcher.h"
 
 #include "projectscene/iprojectsceneconfiguration.h"
-#include "playback/iplayback.h"
-#include "playback/iplaybackcontroller.h"
+#include "playback/iplayer.h"
+#include "playback/itransport.h"
 #include "trackedit/iselectioncontroller.h"
 #include "trackedit/iprojecthistory.h"
 
@@ -71,8 +71,8 @@ class TimelineContext : public QObject, public muse::async::Asyncable, public mu
     muse::ContextInject<context::IGlobalContext> globalContext{ this };
     muse::ContextInject<trackedit::ISelectionController> selectionController{ this };
     muse::ContextInject<trackedit::IProjectHistory> projectHistory{ this };
-    muse::ContextInject<playback::IPlayback> playback{ this };
-    muse::ContextInject<playback::IPlaybackController> playbackController{ this };
+    muse::ContextInject<playback::IPlayer> player{ this };
+    muse::ContextInject<playback::ITransport> transport{ this };
 
 public:
 

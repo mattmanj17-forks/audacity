@@ -8,6 +8,7 @@
 
 #include "context/uicontext.h"
 #include "context/shortcutcontext.h"
+#include "playback/iplayer.h"
 
 using namespace au::playback;
 using namespace muse;
@@ -221,7 +222,7 @@ const UiActionList PlaybackUiActions::m_settingsActions = {
              ),
 };
 
-PlaybackUiActions::PlaybackUiActions(const muse::modularity::ContextPtr& ctx, std::shared_ptr<PlaybackController> controller)
+PlaybackUiActions::PlaybackUiActions(const muse::modularity::ContextPtr& ctx, std::shared_ptr<TransportActionsController> controller)
     : muse::Contextable(ctx), m_controller(controller)
 {
 }
@@ -234,7 +235,7 @@ void PlaybackUiActions::init()
         m_actionCheckedChanged.send({ code });
     });
 
-    m_controller->isPlayAllowedChanged().onNotify(this, [this]() {
+    transport()->isPlayAllowedChanged().onNotify(this, [this]() {
         ActionCodeList codes;
 
         for (const UiAction& action : actionsList()) {
@@ -244,7 +245,7 @@ void PlaybackUiActions::init()
         m_actionEnabledChanged.send(codes);
     });
 
-    m_controller->isPlayingChanged().onNotify(this, [this]() {
+    player()->isPlayingChanged().onNotify(this, [this]() {
         ActionCodeList codes= {
             PLAYBACK_PLAY_QUERY.toString(),
             PLAYBACK_PAUSE_QUERY.toString(),

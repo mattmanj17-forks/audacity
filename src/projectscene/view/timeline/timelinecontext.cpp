@@ -6,6 +6,7 @@
 
 #include "global/types/number.h"
 
+#include "playback/iplayer.h"
 #include "playback/iaudiooutput.h"
 #include "snaptimeformatter.h"
 
@@ -138,7 +139,7 @@ void TimelineContext::init(double frameWidth)
         emit pinnedPlayHeadEnabledChanged();
     });
 
-    playbackController()->lastPlaybackSeekTimeChanged().onNotify(this, [this]() {
+    transport()->lastPlaybackSeekTimeChanged().onNotify(this, [this]() {
         emit lastPlaybackSeekPositionChanged();
     });
 
@@ -853,7 +854,7 @@ double TimelineContext::findGuideline(double time) const
         return time;
     }
 
-    const double LIMIT = 1. / playback()->audioOutput()->sampleRate(); // 1 sample at current project's sample rate
+    const double LIMIT = 1. / player()->audioOutput()->sampleRate(); // 1 sample at current project's sample rate
 
     if (vs->isSnapEnabled()) {
         if (muse::RealIsEqualOrLess(std::abs(time - applySnapToTime(time)), LIMIT)) {
@@ -1275,5 +1276,5 @@ bool TimelineContext::pinnedPlayHeadEnabled() const
 
 double TimelineContext::lastPlaybackSeekPosition() const
 {
-    return timeToPosition(playbackController()->lastPlaybackSeekTime());
+    return timeToPosition(transport()->lastPlaybackSeekTime());
 }

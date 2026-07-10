@@ -10,10 +10,11 @@
 
 namespace au::playback {
 class PlaybackConfiguration;
-class PlaybackController;
+class TransportActionsController;
 class PlaybackUiActions;
 class PlaybackMeterController;
-class Au3Playback;
+class Au3Player;
+class Transport;
 
 class PlaybackModule : public muse::modularity::IModuleSetup
 {
@@ -44,9 +45,10 @@ public:
     void onDeinit() override;
 
 private:
-    std::shared_ptr<PlaybackController> m_controller;
+    std::shared_ptr<TransportActionsController> m_controller;
     std::shared_ptr<PlaybackUiActions> m_uiActions;
-    std::shared_ptr<Au3Playback> m_playback;
+    std::shared_ptr<Au3Player> m_player;
+    std::shared_ptr<Transport> m_transport;
 };
 }
 

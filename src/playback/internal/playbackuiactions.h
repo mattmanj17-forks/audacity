@@ -9,16 +9,20 @@
 
 #include "audio/iaudiodevicesprovider.h"
 #include "context/iuicontextresolver.h"
-#include "internal/playbackcontroller.h"
+#include "internal/transportactionscontroller.h"
+#include "playback/iplayer.h"
+#include "playback/itransport.h"
 
 namespace au::playback {
 class PlaybackUiActions : public muse::ui::IUiActionsModule, public muse::async::Asyncable, public muse::Contextable
 {
     muse::ContextInject<context::IUiContextResolver> uiContextResolver{ this };
     muse::ContextInject<audio::IAudioDevicesProvider> audioDevicesProvider{ this };
+    muse::ContextInject<playback::IPlayer> player{ this };
+    muse::ContextInject<playback::ITransport> transport{ this };
 
 public:
-    PlaybackUiActions(const muse::modularity::ContextPtr& ctx, std::shared_ptr<PlaybackController> controller);
+    PlaybackUiActions(const muse::modularity::ContextPtr& ctx, std::shared_ptr<TransportActionsController> controller);
 
     void init();
 
@@ -39,7 +43,7 @@ private:
     static const muse::ui::UiActionList m_settingsActions;
     static const muse::ui::UiActionList m_meterDbRangeActions;
 
-    std::shared_ptr<PlaybackController> m_controller;
+    std::shared_ptr<TransportActionsController> m_controller;
     muse::async::Channel<muse::actions::ActionCodeList> m_actionEnabledChanged;
     muse::async::Channel<muse::actions::ActionCodeList> m_actionCheckedChanged;
 };

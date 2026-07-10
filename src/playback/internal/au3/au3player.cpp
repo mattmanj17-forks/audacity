@@ -3,6 +3,8 @@
 */
 #include "au3player.h"
 
+#include "au3audiooutput.h"
+
 #include "framework/global/types/number.h"
 #include "framework/global/defer.h"
 #include "framework/global/log.h"
@@ -20,14 +22,19 @@
 #include "au3wrap/au3types.h"
 
 #include <algorithm>
+#include <cassert>
 
 using namespace au::playback;
 using namespace au::au3;
 
 Au3Player::Au3Player(const muse::modularity::ContextPtr& ctx)
-    : muse::Contextable(ctx)
+    : muse::Contextable(ctx) {}
+
+void Au3Player::init()
 {
     m_playbackStatus.ch.onReceive(this, [this](PlaybackStatus st) {
+        m_isPlayingChanged.notify();
+
         if (st == PlaybackStatus::Running) {
             m_currentTarget.reset();
             m_consumedSamplesSoFar = 0;
@@ -85,9 +92,10 @@ bool Au3Player::isBusy() const
     return audioEngine()->isBusy();
 }
 
-void Au3Player::play()
+void Au3Player::play(std::optional<muse::secs_t> startTime)
 {
     if (m_playbackStatus.val == PlaybackStatus::Paused) {
+        assert(!startTime.has_value() && "Start time not taken into account when resuming playback");
         audioEngine()->pauseStream(false);
         m_playbackStatus.set(PlaybackStatus::Running);
         return;
@@ -198,7 +206,9 @@ void Au3Player::play()
                 }
             }
             opts.mixerEndTime = mixerEndTime;
-            ret = doPlayTracks(TrackList::Get(project), t0, t1, opts);
+            const std::optional<double> pStartTimeOverride
+                = startTime.has_value() ? std::make_optional(startTime->to_double()) : std::nullopt;
+            ret = doPlayTracks(TrackList::Get(project), t0, t1, opts, pStartTimeOverride);
         }
 
         //! NOTE: only flip to Running when a stream was actually started.
@@ -220,7 +230,8 @@ muse::Ret Au3Player::playTracks(TrackList& trackList, double startTime, double e
     return ret;
 }
 
-muse::Ret Au3Player::doPlayTracks(TrackList& trackList, double startTime, double endTime, const PlayTracksOptions& options)
+muse::Ret Au3Player::doPlayTracks(TrackList& trackList, double startTime, double endTime, const PlayTracksOptions& options,
+                                  std::optional<double> pStartTime)
 {
     TransportSequences seqs = makeTransportTracks(trackList, options.selectedOnly);
 
@@ -233,7 +244,9 @@ muse::Ret Au3Player::doPlayTracks(TrackList& trackList, double startTime, double
 
     AudacityProject& project = projectRef();
     const double projectRate = ProjectRate::Get(project).GetRate();
-    int token = audioEngine()->startStream(seqs, startTime, endTime, mixerEndTime, project, options.isDefaultPolicy, projectRate);
+    int token = audioEngine()->startStream(seqs, startTime, endTime, mixerEndTime, *globalContext()->currentProject(),
+                                           options.isDefaultPolicy, projectRate, 0.0 /* leadInTime */,
+                                           nullptr /* crossfadeData */, pStartTime);
     bool success = token != 0;
     if (success) {
         ProjectAudioIO::Get(project).SetAudioIOToken(token);
@@ -462,6 +475,10 @@ bool Au3Player::isLoopRegionClear() const
 
 bool Au3Player::isLoopRegionActive() const
 {
+    if (!globalContext()->currentProject()) {
+        return false;
+    }
+
     Au3Project& project = projectRef();
     auto& playRegion = ViewInfo::Get(project).playRegion;
 
@@ -601,7 +618,7 @@ Au3Project& Au3Player::projectRef() const
 
 bool Au3Player::canStopAudioStream() const
 {
-    return audioEngine()->canStopAudioStream(projectRef());
+    return audioEngine()->canStopAudioStream(*globalContext()->currentProject());
 }
 
 TransportSequences Au3Player::makeTransportTracks(Au3TrackList& trackList, bool selectedOnly)
@@ -616,4 +633,32 @@ TransportSequences Au3Player::makeTransportTracks(Au3TrackList& trackList, bool 
         }
     }
     return result;
+}
+
+bool Au3Player::isPlaying() const
+{
+    return playbackStatus() == PlaybackStatus::Running;
+}
+
+bool Au3Player::isPaused() const
+{
+    return playbackStatus() == PlaybackStatus::Paused;
+}
+
+bool Au3Player::isStopped() const
+{
+    return playbackStatus() == PlaybackStatus::Stopped;
+}
+
+muse::async::Notification Au3Player::isPlayingChanged() const
+{
+    return m_isPlayingChanged;
+}
+
+std::shared_ptr<IAudioOutput> Au3Player::audioOutput() const
+{
+    if (!m_audioOutput) {
+        m_audioOutput = std::make_shared<Au3AudioOutput>(iocContext());
+    }
+    return m_audioOutput;
 }
